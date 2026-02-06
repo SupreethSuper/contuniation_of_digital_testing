@@ -16,6 +16,9 @@ pli_test_next()
 {
   int next_value;
   char buffer_for_acc_fetch_value[32]; // buffer to hold the value fetched from data_out
+
+  
+
   char *data_out_str = acc_fetch_value(h_data_out, "%h", buffer_for_acc_fetch_value); // fetch the current value of data_out and store it in data_out_str
 
   // get the current value of data_out

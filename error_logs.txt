@@ -1,0 +1,15 @@
+test 1 error log:
+make[1]: Entering directory `/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework02/csrc'
+rm -f _cuarc*.so _csrc*.so pre_vcsobj_*.so share_vcsobj_*.so
+gcc -w  -pipe -fPIC -O -I/usr/local/synopsys/vcs_2022.06/include    -c ../pli_test.c
+../pli_test.c: In function 'pli_test_next':
+../pli_test.c:19:40: error: 'h_data_out' undeclared (first use in this function)
+   char *data_out_str = acc_fetch_value(h_data_out, "%h", buffer_for_acc_fetch_value); // fetch the current value of data_out and store it in data_out_str
+                                        ^
+../pli_test.c:19:40: note: each undeclared identifier is reported only once for each function it appears in
+make[2]: *** [pli_test.o] Error 1
+make[1]: *** [product_clean_order] Error 2
+make[1]: Leaving directory `/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework02/csrc'
+Make exited with status 2
+CPU time: .301 seconds to compile + .030 seconds to elab + .325 seconds to link
+[sathrey5@eecad104 homework02]$
