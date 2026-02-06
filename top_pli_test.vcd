@@ -1,0 +1,85 @@
+$date
+	Thu Feb  5 17:30:49 2026
+$end
+
+$version
+	Synopsys VCS version T-2022.06-SP2-1_Full64
+$end
+
+$timescale
+	1ps
+$end
+
+$comment Csum: 1 2f2398a63bce18bc $end
+
+
+$scope module top_pli_test $end
+
+$scope module pli_test $end
+$var reg 1 ! clk $end
+$var reg 1 " rst_b $end
+$var reg 16 # data_in [15:0] $end
+$var reg 16 $ data_out [15:0] $end
+$upscope $end
+
+$upscope $end
+
+$enddefinitions $end
+
+#0
+$dumpvars
+b0000000000000000 #
+b0000000000000000 $
+0!
+0"
+$end
+#5
+1"
+#10
+1!
+#15
+0!
+#20
+1!
+#25
+0!
+#30
+1!
+#35
+0!
+#40
+1!
+#45
+0!
+#50
+1!
+#55
+0!
+#60
+1!
+#65
+0!
+#70
+1!
+#75
+0!
+#80
+1!
+#85
+0!
+#90
+1!
+#95
+0!
+#100
+1!
+#105
+0!
+#110
+1!
+#115
+0!
+#120
+1!
+#125
+0!
