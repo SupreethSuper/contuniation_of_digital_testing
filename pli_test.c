@@ -12,10 +12,21 @@
 
 int pli_function(char * value);   // declare prototype
 
+int counter = 0; // global counter variable
+
+my_setup()
+{
+  counter = 0; // initialize counter to 0
+}
+
 pli_test_next()
 {
   int next_value;
   char buffer_for_acc_fetch_value[32]; // buffer to hold the value fetched from data_out
+
+  // $pli_test_next(data_out,data_in);
+  handle h_data_out = acc_handle_tfarg(1); // get h_data_out is the pli_test_next for the data out in sv
+  handle h_data_in = acc_handle_tfarg(2); // get h_data_in is the pli_test_next for the data in in sv
 
   
 
@@ -27,6 +38,13 @@ pli_test_next()
   printf("The buffer contains: %h\n", buffer_for_acc_fetch_value); // print the contents of the buffer
 
   next_value = pli_function(data_out_str);
+
+  static s_setval_delay delay_s = {{0,1,0,0.0}, accNoDelay}; // set the delay for the value assignment
+  static s_setval_value value_s = {accInt}; // set the type and initial value for the value assignment
+  value_s.value.integer = counter;
+  acc_set_value(reg, &value_s, &delay_s);
+  counter++;
+ 
 
   // set the value of data_in
 }
