@@ -41,7 +41,7 @@ pli_test_next()
 
   static s_setval_delay delay_s = {{0,1,0,0.0}, accNoDelay}; // set the delay for the value assignment
   static s_setval_value value_s = {accIntVal}; // set the type and initial value for the value assignment. Was accInt before but changed to accIntVal for error dealing
-  value_s.value.integer = counter;
+  value_s.value.integer = (next_value & 0xFFFF); // set the integer value to be assigned to data_in
   acc_set_value(h_data_in, &value_s, &delay_s); //error_dealth with
   counter++;
  
