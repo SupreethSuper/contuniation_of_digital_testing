@@ -92,7 +92,8 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
 
-   // YOUR STIMULUS GOES HERE!
+   //first write FF to the chip, then read
+   `SET_WRITE()
 
    #5 $finish;
 end // initial begin
