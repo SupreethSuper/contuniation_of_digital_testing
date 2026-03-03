@@ -92,7 +92,10 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
 
-   // YOUR STIMULUS GOES HERE!
+  
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 4, 0); //write it, lets see, if it works
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1);
+
 
    #5 $finish;
 end // initial begin
