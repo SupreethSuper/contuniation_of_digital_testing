@@ -100,6 +100,12 @@ begin
    #5 $finish;
 end // initial begin
 
+
+initial begin :wave_gen
+   $dumpfile("wave.vcd");
+   $dumpvars(0,top_verichip);
+end
+
 verichip verichip (.clk           ( clk            ),    // system clock
                    .rst_b         ( rst_b          ),    // chip reset
                    .export_disable( export_disable ),    // disable features
