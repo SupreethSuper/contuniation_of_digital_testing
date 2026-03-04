@@ -92,27 +92,33 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
 
+
+
+
+
+//replaced all the @negedge clk with wait(clk == 1'b0);
+
 //=================================================================================
    //writing 0xff_ff to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'hFF_FF)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -120,23 +126,23 @@ begin
    //writing 0x5a_5a to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5A_5A, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'h5A_5A)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -144,23 +150,23 @@ begin
    //writing 0xaa_aa to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAA_AA, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'hAA_AA)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -168,23 +174,23 @@ begin
    //writing 0x55_55 to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h55_55, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'h55_55)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -193,23 +199,23 @@ begin
    //writing 0x55_20 to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h55_20, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'h55_20)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -218,23 +224,23 @@ begin
    //writing 0x20_20 to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h20_20, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'h20_20)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
@@ -242,23 +248,23 @@ begin
    //writing 0x00_00 to alu left
 
    // Transition FSM from RESET -> NORM (requires !maroon & gold)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    maroon <= 1'b0;
    gold   <= 1'b1;
-   @(negedge clk);  // let the state transition register
+   wait( clk == 1'b0 );  // let the state transition register
 
    // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1)
-   @(negedge clk);  // wait for write to latch
+   wait( clk == 1'b0 );  // wait for write to latch
 
    // Read ALU LEFT back
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
-   @(negedge clk);  // wait for read data to appear
+   wait( clk == 1'b0 );  // wait for read data to appear
    `CHECK_VAL(16'h00_00)
 
-   @(negedge clk);
+   wait( clk == 1'b0 );
    `CLEAR_BUS
 //========================================================================================
 
