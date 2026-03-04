@@ -1,3 +1,4 @@
 #files not to track
 *.vcd
 *.fsdb
+*.pdf

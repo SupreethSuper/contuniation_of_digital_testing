@@ -92,10 +92,23 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
 
-  
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 4, 0); //write it, lets see, if it works
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1);
+   //writing 0xff_ff to alu left
 
+   // Transition FSM from RESET -> NORM (requires !maroon & gold)
+   maroon <= 1'b0;
+   gold   <= 1'b1;
+   @(posedge clk);  // let the state transition register
+
+   // Write 0xFFFF to ALU LEFT (chip_select=1, byte_en=2'b11 for both bytes)
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1)
+   @(posedge clk);  // wait for write to latch
+
+   // Read ALU LEFT back
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
+   @(posedge clk);  // wait for read data to appear
+   `CHECK_VAL(16'hFF_FF)
+
+   `CLEAR_BUS
 
    #5 $finish;
 end // initial begin
