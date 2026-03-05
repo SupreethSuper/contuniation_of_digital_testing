@@ -77,6 +77,15 @@ localparam VCHIP_ALU_SWA   = 16'h0005;
 localparam VCHIP_ALU_SHL   = 16'h0006;
 localparam VCHIP_ALU_SHR   = 16'h0007;
 
+
+//loop params start
+
+int i;// loop counter will be used in while
+int seed; //will be used to generate random numbers
+
+
+//loop params ends
+
 initial
 begin
    clk <= 1'b0;
@@ -92,10 +101,30 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
 
-   // YOUR STIMULUS GOES HERE!
+  //reset is done
+  //bring the chip to Normal mode -> M'G
+  maroon <= 1'b0;
+  gold <= 1'b1;
+ //chip now in normal mode
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ //wait for the clock to take the reg
+ `SET_WRITE(`VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 2'b11, 1'b1);
+ `CHECK_RW(`VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 16'hF0_F0, 2'b11, 1'b1);
+ `CLEAR_BUS;
+
+
+
 
    #5 $finish;
 end // initial begin
+
+//get the wave gen
+
+initial begin : wave_gen
+   $dumpfile("wave.vcd");
+   $dumpvars(0,top_verichip);
+end
 
 verichip verichip (.clk           ( clk            ),    // system clock
                    .rst_b         ( rst_b          ),    // chip reset
