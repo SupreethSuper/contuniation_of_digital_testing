@@ -289,12 +289,13 @@ begin
 
       // Generate a random seed
       seed = $urandom;
+      rand_byte = $urandom(seed) & 8'hFF;
       $display("Random seed = %0d", seed);
 
       // Run 10 random write/read tests
       for (i = 0; i < 10; i = i + 1) begin
          // Generate a random 8-bit value from the seed
-         rand_byte = $urandom(seed) & 8'hFF;
+         rand_byte = $urandom();
          // Form 0xyy_yy pattern (same byte in both halves)
          rand_val = {rand_byte, rand_byte};
          $display("Random test %0d: writing 0x%h to ALU LEFT", i, rand_val);
