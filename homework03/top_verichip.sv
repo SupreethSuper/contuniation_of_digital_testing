@@ -402,7 +402,7 @@ begin
    #5 $finish;
 
 
-initial begin :wave_gen
+initial begin
    $dumpfile("wave.vcd");
    $dumpvars(0,top_verichip);
 end
