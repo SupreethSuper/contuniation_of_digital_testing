@@ -3,3 +3,6 @@
 *.fsdb
 *.pdf
 *.png
+
+#dont put any sort of JSON files
+*.json
