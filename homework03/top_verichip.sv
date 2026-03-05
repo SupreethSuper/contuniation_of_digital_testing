@@ -109,9 +109,18 @@ begin
  wait(clk == 1'b1);
  wait(clk == 1'b0);
  //wait for the clock to take the reg
- `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 2'b11, 1'b1);
- `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 16'hF0_F0, 2'b11, 1'b1);
- `CLEAR_BUS;
+ `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 2'b11, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ // Read back and verify
+ `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ `CHECK_VAL(16'hF0_F0)
+
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ `CLEAR_BUS
 
 
 
