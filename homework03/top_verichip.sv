@@ -278,6 +278,51 @@ begin
 //========================================================================================
 
 
+//=================================================================================
+   // Random value testing using $urandom
+   // Generate a seed, then use it to produce random 0xyy_yy values for ALU LEFT
+   begin : random_test_block
+      integer seed;
+      integer i;
+      logic [7:0]  rand_byte;
+      logic [15:0] rand_val;
+
+      // Generate a random seed
+      seed = $urandom;
+      $display("Random seed = %0d", seed);
+
+      // Run 10 random write/read tests
+      for (i = 0; i < 10; i = i + 1) begin
+         // Generate a random 8-bit value from the seed
+         rand_byte = $urandom(seed) & 8'hFF;
+         // Form 0xyy_yy pattern (same byte in both halves)
+         rand_val = {rand_byte, rand_byte};
+         $display("Random test %0d: writing 0x%h to ALU LEFT", i, rand_val);
+
+         // Transition FSM (requires !maroon & gold)
+         wait( clk == 1'b0 );
+         maroon <= 1'b0;
+         gold   <= 1'b1;
+         wait( clk == 1'b0 );  // let the state transition register
+
+         // Write random value to ALU LEFT
+         wait( clk == 1'b0 );
+         `SET_WRITE(VCHIP_ALU_LEFT_ADDR, rand_val, 2'b11, 1)
+         wait( clk == 1'b0 );  // wait for write to latch
+
+         // Read ALU LEFT back and verify
+         wait( clk == 1'b0 );
+         `SET_READ(VCHIP_ALU_LEFT_ADDR, 1)
+         wait( clk == 1'b0 );  // wait for read data to appear
+         `CHECK_VAL(rand_val)
+
+         wait( clk == 1'b0 );
+         `CLEAR_BUS
+      end
+   end
+//========================================================================================
+
+
    #5 $finish;
 end // initial begin
 
