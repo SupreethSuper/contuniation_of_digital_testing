@@ -122,6 +122,38 @@ begin
  wait(clk == 1'b0);
  `CLEAR_BUS
 
+ //=====================--ZERO CHECK--==================================================
+
+  wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ //wait for the clock to take the reg
+ `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ // Read back and verify
+ `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ `CHECK_VAL(16'hFF_FF)
+
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ //`CLEAR_BUS
+ `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ // Read back and verify
+ `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ `CHECK_VAL(16'h00_00)
+
+ wait(clk == 1'b1);
+ wait(clk == 1'b0);
+ `CLEAR_BUS
+
+ //=====================================================================
+
 
 
 
