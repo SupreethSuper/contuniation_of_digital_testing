@@ -116,7 +116,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'hF0_F0)
@@ -135,7 +135,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'hFF_FF)
@@ -147,7 +147,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'h00_00)
@@ -167,7 +167,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'h30_00)
