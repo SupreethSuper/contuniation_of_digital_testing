@@ -103,7 +103,11 @@ initial begin
 
   //reset is done
   //bring the chip to Normal mode -> M'G
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
   maroon <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
   gold <= 1'b1;
  //chip now in normal mode
 
@@ -116,7 +120,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'hF0_F0)
@@ -135,7 +139,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'hFF_FF)
@@ -147,7 +151,7 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'h00_00)
@@ -167,10 +171,34 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CHECK_VAL(16'h30_00)
+
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CLEAR_BUS
+
+
+
+
+
+ //======================================================================
+
+  //=======================30_CD, with left access byte en===============
+
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   //wait for the clock to take the reg
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b01, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   // Read back and verify
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHECK_VAL(16'h00_CD)
 
    wait(clk == 1'b1);
    wait(clk == 1'b0);
