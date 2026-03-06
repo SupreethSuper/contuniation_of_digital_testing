@@ -101,81 +101,230 @@ initial begin
    `CLEAR_ALL
    `CHIP_RESET
 
-  //reset is done
-  //bring the chip to Normal mode -> M'G
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-  maroon <= 1'b0;
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-  gold <= 1'b1;
- //chip now in normal mode
+//   //reset is done
+//   //bring the chip to Normal mode -> M'G
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//   maroon <= 1'b0;
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//   gold <= 1'b1;
+//  //chip now in normal mode
 
- //=====================--F0 CHECK--==================================================
+//  //=====================--F0 CHECK--==================================================
 
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    //wait for the clock to take the reg
+//    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 2'b11, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    // Read back and verify
+//    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CHECK_VAL(16'hF0_F0)
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CLEAR_BUS
+//  //===================================================================================
+
+//  //=====================--ZERO CHECK--==================================================
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    //wait for the clock to take the reg
+//    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    // Read back and verify
+//    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CHECK_VAL(16'hFF_FF)
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    //`CLEAR_BUS
+//    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    // Read back and verify
+//    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CHECK_VAL(16'h00_00)
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CLEAR_BUS
+
+//  //=====================================================================
+
+//  //=======================30_f0, with left access byte en===============
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    //wait for the clock to take the reg
+//    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_F0, 2'b10, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    // Read back and verify
+//    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CHECK_VAL(16'h30_00)
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CLEAR_BUS
+
+
+
+
+
+//  //======================================================================
+
+//   //=======================30_CD, with left access byte en===============
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    //wait for the clock to take the reg
+//    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b01, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    // Read back and verify
+//    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CHECK_VAL(16'h00_CD)
+
+//    wait(clk == 1'b1);
+//    wait(clk == 1'b0);
+//    `CLEAR_BUS
+
+
+
+
+
+//  //======================================================================
+
+
+//============================================================================
+
+
+   // Transition Reset -> Normal (M'G: maroon=0, gold=1)
+   maroon <= 1'b0;
+   gold   <= 1'b1;
+
+   // Wait a full clock cycle for state machine to register the transition
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   //wait for the clock to take the reg
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hF0_F0, 2'b11, 1'b1)
+   // chip is now in Normal state
+
+   //===================== alu left write: full 16-bit write =====================
+   // Write 0xF0F0 with both bytes enabled, read back and verify
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   // Read back and verify
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hF0F0, 2'b11, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   `CHECK_VAL(16'hF0_F0)
-
+   `CHECK_VAL(16'hF0F0)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CLEAR_BUS
- //===================================================================================
 
- //=====================--ZERO CHECK--==================================================
-
+   //===================== alu left read: write 0xFFFF then 0x0000 ==============
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   //wait for the clock to take the reg
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   // Read back and verify
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   `CHECK_VAL(16'hFF_FF)
+   `CHECK_VAL(16'hFFFF)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
 
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   //`CLEAR_BUS
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-   // Read back and verify
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   `CHECK_VAL(16'h00_00)
-
+   `CHECK_VAL(16'h0000)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CLEAR_BUS
 
- //=====================================================================
+   //===================== alu left bytes: byte enable tests ====================
 
- //=======================30_f0, with left access byte en===============
-
+   // First set a known value: write 0x0000 to start clean
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   //wait for the clock to take the reg
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_F0, 2'b10, 1'b1)
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   // Read back and verify
+   `CLEAR_BUS
+
+   // Write high byte only (byte_en=2'b10): write 0x30F0, only [15:8]=0x30 should land
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30F0, 2'b10, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
-   `CHECK_VAL(16'h30_00)
+   `CHECK_VAL(16'h3000)   // only high byte written, low byte stays 0x00
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CLEAR_BUS
 
+   // Write low byte only (byte_en=2'b01): write 0xABCD, only [7:0]=0xCD should land
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hABCD, 2'b01, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHECK_VAL(16'h30CD)   // high byte stays 0x30 from above, low byte = 0xCD
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CLEAR_BUS
+
+   //===================== alu left access: chip_select=0 should not write =====
+
+   // Write a known value first
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h1234, 2'b11, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CLEAR_BUS
+
+   // Attempt write with chip_select=0 — should be ignored by design
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b11, 1'b0)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CLEAR_BUS
+
+   // Read back — value should still be 0x1234
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHECK_VAL(16'h1234)
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    `CLEAR_BUS
@@ -184,32 +333,11 @@ initial begin
 
 
 
- //======================================================================
-
-  //=======================30_CD, with left access byte en===============
-
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-   //wait for the clock to take the reg
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b01, 1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-   // Read back and verify
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-   `CHECK_VAL(16'h00_CD)
-
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
-   `CLEAR_BUS
 
 
 
 
-
- //======================================================================
-
+//==========================================================================
 
 
 
