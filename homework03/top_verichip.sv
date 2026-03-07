@@ -49,6 +49,10 @@
   wait(clk == 1'b0); \
   wait(clk == 1'b1);
 
+`define ISSUE_ADD \
+  `CLK_WAIT \
+  `SET_WRITE(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | VCHIP_ALU_ADD), 2'b11, 1'b1);  
+
 
 
 module top_verichip ();
@@ -97,20 +101,165 @@ begin
    end
 end
 
-initial
-begin
-   `CLEAR_ALL
-   `CHIP_RESET
+initial begin
+  `CLEAR_ALL
+  `CHIP_RESET
 
-   `CLK_WAIT
+  // put state machine inputs in known state
+  // initial state
+`CLK_WAIT
+maroon <= 1'b0;
+gold   <= 1'b1;
 
-   maroon = 1'b0;
-   gold = 1'b1;
-   `CLK_WAIT
+// ----------------------------------
+// 1) Write 19_08, read back
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h19_08, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h19_08);
+`CLEAR_BUS
+
+// ----------------------------------
+// 2) Write FFFF, read back
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);
+`CLEAR_BUS
+
+// ----------------------------------
+// 3) Low byte write
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h45_32, 2'b01, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_32);
+`CLEAR_BUS
+
+// ----------------------------------
+// 4) High byte write
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b10, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h5F_32);
+`CLEAR_BUS
+
+// ----------------------------------
+// 5) Full clear
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
+
+// ----------------------------------
+// 6) Write 5A5A
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5A_5A, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h5A_5A);
+`CLEAR_BUS
+
+// ----------------------------------
+// 7) byte_en = 00 (no write)
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b00, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h5A_5A);
+`CLEAR_BUS
+
+// ----------------------------------
+// 8) cs = 0 (no write)
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b0);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h5A_5A);
+`CLEAR_BUS
+
+// ----------------------------------
+// 9) Valid write FADA
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFADA);
+`CLEAR_BUS
+
+
+
+// ----------------------------------
+// 8) cs = 0 (no read)
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
+
+
+
+
+// ===============================
+// ALU REGISTER TESTS (COPY/PASTE)
+// Uses required structure:
+//   `CLK_WAIT  `SET_* (...)  `READ_WAIT (for reads)
+// ===============================
+
+// Issue ADD command (adjust encoding if spec differs)
+
+
+// -------------------------------
+// ALU_LEFT tests
+// -------------------------------
+`CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h19_08, 2'b11, 1'b1);
 `CLK_WAIT
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
+`CHECK_VAL(16'h19_08);
+`CLEAR_BUS
 
 `CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1);
@@ -118,21 +267,27 @@ begin
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
 `CHECK_VAL(16'hFF_FF);
+`CLEAR_BUS
 
+// low byte only (expect high byte preserved = FF)
 `CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h45_32, 2'b01, 1'b1);
 `CLK_WAIT
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
 `CHECK_VAL(16'hFF_32);
+`CLEAR_BUS
 
+// high byte only (expect low byte preserved = 32)
 `CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b10, 1'b1);
 `CLK_WAIT
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
 `CHECK_VAL(16'h5F_32);
+`CLEAR_BUS
 
+// full clear
 `CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1);
 `CLK_WAIT
@@ -141,38 +296,185 @@ begin
 `CHECK_VAL(16'h00_00);
 `CLEAR_BUS
 
-`CLK_WAIT
-`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5A_5A, 2'b11, 1'b1);
-`CLK_WAIT
-`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
-`READ_WAIT
-`CHECK_VAL(16'h5A_5A);
-
+// byte_en = 00 => no write (should stay 0000)
 `CLK_WAIT
 `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b00, 1'b1);
 `CLK_WAIT
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
-`CHECK_VAL(16'h5A_5A);
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
 
+// cs = 0 => no write (should stay 0000)
 `CLK_WAIT
-`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b0);
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hBEEF, 2'b11, 1'b0);
 `CLK_WAIT
 `SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
 `READ_WAIT
-`CHECK_VAL(16'h5A_5A);
-
-   
-   
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
 
 
+// -------------------------------
+// ALU_RIGHT tests
+// -------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h12_34, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h12_34);
+`CLEAR_BUS
+
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAB_CD, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hAB_CD);
+`CLEAR_BUS
+
+// low byte only (expect high byte preserved = AB)
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h77_55, 2'b01, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hAB_55);
+`CLEAR_BUS
+
+// high byte only (expect low byte preserved = 55)
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h66_00, 2'b10, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h66_55);
+`CLEAR_BUS
+
+// full clear
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h00_00, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
+
+// byte_en = 00 => no write (should stay 0000)
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hDEAD, 2'b00, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
+
+// cs = 0 => no write (should stay 0000)
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hBEEF, 2'b11, 1'b0);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);
+`CLEAR_BUS
 
 
+// -------------------------------
+// ALIASING: LEFT vs RIGHT
+// -------------------------------
+// Write distinct values; confirm both hold independently
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0A0B, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0C0D, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0A0B);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0C0D);
+`CLEAR_BUS
 
 
+// -------------------------------
+// ALU_OUT tests (READ-ONLY) using ADD
+// -------------------------------
+// Set operands
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0011, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0022, 2'b11, 1'b1);
 
-   #20 $finish;
-end // initial begin
+// Compute OUT = LEFT + RIGHT
+`CLK_WAIT
+
+`ISSUE_ADD
+`CLK_WAIT
+`CLK_WAIT
+
+// Read OUT
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0033);
+`CLEAR_BUS
+
+// Change LEFT only, recompute, OUT should change, RIGHT unchanged
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0100, 2'b11, 1'b1);
+`CLK_WAIT
+`ISSUE_ADD
+`CLK_WAIT
+`CLK_WAIT
+
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0022);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0122);
+`CLEAR_BUS
+
+// Change RIGHT only, recompute, OUT should change, LEFT unchanged
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0005, 2'b11, 1'b1);
+`CLK_WAIT
+`ISSUE_ADD
+`CLK_WAIT
+`CLK_WAIT
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0100);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0105);
+`CLEAR_BUS
+
+// Read-only enforcement: attempt write to OUT should not change OUT
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_OUT_ADDR, 16'hBEEF, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0105);
+`CLEAR_BUS
+
+  #5 $finish;
+end
 
 verichip verichip (.clk           ( clk            ),    // system clock
                    .rst_b         ( rst_b          ),    // chip reset
