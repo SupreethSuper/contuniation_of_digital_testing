@@ -27,13 +27,23 @@
    gold           <= 1'b0;          \
    `CLEAR_BUS
 
-`define CHECK_VAL(val)              
-   if ( data_out != val )        begin   
+// `define CHECK_VAL(val)              
+//    if ( data_out != val )        begin   
        
-       $display("bad read, got %h but expected %h at %t",data_out,val,$time());
-   end
-   if (data_out == val)         begin
-       $display("good read, got %h and expected %h at %t",data_out,val,$time());
+//        $display("bad read, got %h but expected %h at %t",data_out,val,$time());
+//    end
+//    if (data_out == val)         begin
+//        $display("good read, got %h and expected %h at %t",data_out,val,$time());
+//    end
+
+`define CHECK_VAL(val)              \
+   if ( data_out != val )          \
+   begin                           \
+       $display("bad read, got %h but expected %h at %t", data_out, val, $time()); \
+   end                             \
+   else                            \
+   begin                           \
+       $display("good read, got %h and expected %h at %t", data_out, val, $time()); \
    end
 
 `define CHECK_RW(addr,wval,rval,bytes,cs)    \
