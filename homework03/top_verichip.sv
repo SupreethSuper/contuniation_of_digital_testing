@@ -30,6 +30,8 @@
 `define CHECK_VAL(val)              \
    if ( data_out != val )           \
        $display("bad read, got %h but expected %h at %t",data_out,val,$time());
+   if (data_out == val)             \
+       $display("good read, got %h and expected %h at %t",data_out,val,$time());
 
 `define CHECK_RW(addr,wval,rval,bytes,cs)    \
    `WRITE_REG(addr,wval,bytes,cs)            \
@@ -101,48 +103,38 @@ initial begin
    `CLEAR_ALL
    `CHIP_RESET
 
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    maroon <= 1'b0;
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    gold <= 1'b1;
 
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'hFF_FF)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
    `CLEAR_BUS
 
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFF_FF, 2'b11,1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b10,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
    `CHECK_VAL(16'h30_FF)
    `CLEAR_BUS
 
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b01,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
    `CHECK_VAL(16'hFF_30)
    `CLEAR_BUS
 
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
-   wait(clk == 1'b1);
-   wait(clk == 1'b0);
+@negedge(clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b00,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
    `CHECK_VAL(16'hFF_FF)
