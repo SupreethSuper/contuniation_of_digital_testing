@@ -107,32 +107,41 @@ initial begin
    wait(clk == 1'b1);
    wait(clk == 1'b0);
    gold <= 1'b1;
+
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'hFF_FF)
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
    `CLEAR_BUS
 
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b10,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
    `CHECK_VAL(16'h30_FF)
    `CLEAR_BUS
 
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b01,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
    `CHECK_VAL(16'hFF_30)
    `CLEAR_BUS
 
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+   wait(clk == 1'b1);
    wait(clk == 1'b0);
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b00,1'b1)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
