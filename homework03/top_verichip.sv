@@ -123,6 +123,38 @@ gold   <= 1'b1;
 `CHECK_VAL(16'h19_08);
 `CLEAR_BUS
 
+
+// ----------------------------------
+// 1) Write 55_55, read back
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h55_55, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h55_55);
+`CLEAR_BUS
+
+
+
+// ----------------------------------
+// 1) Write AA_AA, read back
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAA_AA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hAA_AA);
+`CLEAR_BUS
+
+
+
+
+
+
 // ----------------------------------
 // 2) Write FFFF, read back
 // ----------------------------------
@@ -472,6 +504,10 @@ gold   <= 1'b1;
 `READ_WAIT
 `CHECK_VAL(16'h0105);
 `CLEAR_BUS
+
+
+
+//=======================================================================
 
   #5 $finish;
 end
