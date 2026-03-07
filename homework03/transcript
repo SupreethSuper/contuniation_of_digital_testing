@@ -1,0 +1,40 @@
+# do tb_runner.do
+# ** Warning: (vlib-34) Library already exists at "work".
+# Model Technology ModelSim - Intel FPGA Edition vmap 2020.1 Lib Mapping Utility 2020.02 Feb 28 2020
+# vmap work work 
+# Modifying modelsim.ini
+# Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+# Start time: 21:57:11 on Mar 06,2026
+# vlog -reportprogress 300 -sv verichip.sv 
+# -- Compiling module verichip
+# 
+# Top level modules:
+# 	verichip
+# End time: 21:57:11 on Mar 06,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+# Start time: 21:57:11 on Mar 06,2026
+# vlog -reportprogress 300 -sv top_verichip.sv 
+# -- Compiling module top_verichip
+# 
+# Top level modules:
+# 	top_verichip
+# End time: 21:57:11 on Mar 06,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# vsim work.top_verichip 
+# Start time: 21:57:11 on Mar 06,2026
+# Loading sv_std.std
+# Loading work.top_verichip
+# Loading work.verichip
+# ** Note: $finish    : top_verichip.sv(174)
+#    Time: 195 ns  Iteration: 0  Instance: /top_verichip
+# 1
+# Break in Module top_verichip at top_verichip.sv line 174
+add wave -position end  sim:/top_verichip/clk
+add wave -position end  sim:/top_verichip/rst_b
+add wave -position end  sim:/top_verichip/chip_select
+add wave -position end  sim:/top_verichip/byte_en
+add wave -position end  sim:/top_verichip/data_in
+add wave -position end  sim:/top_verichip/data_out
+# End time: 22:00:26 on Mar 06,2026, Elapsed time: 0:03:15
+# Errors: 0, Warnings: 0
