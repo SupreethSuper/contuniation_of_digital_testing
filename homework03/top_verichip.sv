@@ -1028,7 +1028,399 @@ gold   <= 1'b1;
 //=====================START OF ERROR STATE=========================
 
 
+// ===============================================================
+// ERROR STATE TESTS
+// Precondition: Push to Error state via overflow
+// ===============================================================
+// Push to Error state
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'hFFFF, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1);
+`CLK_WAIT
+`ISSUE_ADD   // Overflow → Error state
+`CLK_WAIT
+`CLK_WAIT
 
+// ----------------------------------
+// Write 19_08 - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h19_08, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored, Led still holds 16'hFFFF
+`CLEAR_BUS
+
+
+// ----------------------------------
+// 1) Write 55_55 - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h55_55, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+
+// ----------------------------------
+// 1) Write AA_AA - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAA_AA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+
+// ----------------------------------
+// 2) Write FFFF - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Coincidentally same value but write still ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 3) Low byte write - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h45_32, 2'b01, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 4) High byte write - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b10, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 5) Full clear - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Both writes ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 6) Write 5A5A - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5A_5A, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 7) byte_en = 00 (no write) - already disabled in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b00, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 8) cs = 0 (no write)
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b0);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 9) Valid write FADA - DISABLED in Error state
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// ----------------------------------
+// 8) cs = 0 (no read)
+// ----------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFADA, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0);
+`READ_WAIT
+`CHECK_VAL(16'h00_00);  // cs=0, no read driven
+`CLEAR_BUS
+
+
+// ===============================
+// ALU REGISTER TESTS - ERROR STATE
+// ===============================
+
+// -------------------------------
+// ALU_LEFT tests - writes disabled, reads enabled
+// -------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h19_08, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored, same value by coincidence
+`CLEAR_BUS
+
+// low byte only - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h45_32, 2'b01, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// high byte only - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5F_40, 2'b10, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// full clear - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h00_00, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// byte_en = 00 => no write
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b00, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+// cs = 0 => no write
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hBEEF, 2'b11, 1'b0);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Write ignored
+`CLEAR_BUS
+
+
+// -------------------------------
+// ALU_RIGHT tests - writes disabled, reads enabled
+// Right was 16'h0001 before overflow
+// -------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h12_34, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored, Right stays 16'h0001
+`CLEAR_BUS
+
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAB_CD, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+// low byte only - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h77_55, 2'b01, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+// high byte only - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h66_00, 2'b10, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+// full clear - write disabled
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h00_00, 2'b11, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+// byte_en = 00 => no write
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hDEAD, 2'b00, 1'b1);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+// cs = 0 => no write
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hBEEF, 2'b11, 1'b0);
+`CLK_WAIT
+`SET_READ (VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Write ignored
+`CLEAR_BUS
+
+
+// -------------------------------
+// ALIASING: LEFT vs RIGHT - reads still work
+// -------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0A0B, 2'b11, 1'b1);  // Write ignored
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0C0D, 2'b11, 1'b1);  // Write ignored
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Still holds pre-error value
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Still holds pre-error value
+`CLEAR_BUS
+
+
+// -------------------------------
+// ALU_OUT tests - commands disabled in Error state
+// -------------------------------
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0011, 2'b11, 1'b1);  // Write ignored
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0022, 2'b11, 1'b1);  // Write ignored
+
+// No ADD - commands ignored in Error state
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0000);  // Out holds last ALU result (overflow result is 0)
+`CLEAR_BUS
+
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR,  16'h0100, 2'b11, 1'b1);  // Write ignored
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h00_01);  // Unchanged
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0000);  // Unchanged
+`CLEAR_BUS
+
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0005, 2'b11, 1'b1);  // Write ignored
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Unchanged
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0000);  // Unchanged
+`CLEAR_BUS
+
+// Read-only enforcement: write to OUT ignored
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_OUT_ADDR, 16'hBEEF, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'h0000);  // Still 16'h0000
+`CLEAR_BUS
+
+
+//=======================================================================
+// Aliasing type 2 - 6 bit address - writes disabled in Error state
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1);  // Write ignored
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+
+`CLK_WAIT
+`SET_WRITE(7'h09, 16'h0000, 2'b11, 1'b1);  // Write ignored
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'hFF_FF);  // Still holds pre-error value
+`CLEAR_BUS
+//=======================================================================
 
 
 
@@ -1057,6 +1449,35 @@ gold   <= 1'b1;
 
 
 
+
+
+
+
+
+
+
+//===================start of export control========================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//================end of export control================================
 
 
 
