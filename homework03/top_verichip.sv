@@ -121,35 +121,50 @@ initial begin
 @(negedge clk)
    gold <= 1'b1;
 
+// ── Test 1: Full write FFFF, then read back ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11, 1'b1)
+@(negedge clk)
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'hFF_FF)
 @(negedge clk)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
    `CLEAR_BUS
 
+// ── Restore FFFF for partial-write tests ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFF_FF, 2'b11,1'b1)
 @(negedge clk)
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+
+// ── Test 2: Partial high-byte write (byte_en=10), expect 30FF ──
+@(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h30_CD, 2'b10,1'b1)
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+@(negedge clk)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'h30_FF)
    `CLEAR_BUS
 
+// ── Restore FFFF ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+
+// ── Test 3: Partial low-byte write (byte_en=01), expect FF30 ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b01,1'b1)
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+@(negedge clk)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'hFF_30)
    `CLEAR_BUS
 
+// ── Restore FFFF ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFF_FF, 2'b11,1'b1)
+
+// ── Test 4: No-byte write (byte_en=00), expect FFFF unchanged ──
 @(negedge clk)
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hCD_30, 2'b00,1'b1)
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+@(negedge clk)
+   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    `CHECK_VAL(16'hFF_FF)
    `CLEAR_BUS
    
