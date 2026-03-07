@@ -11,32 +11,32 @@ cModel Technology
 Z0 dC:/Users/supre/OneDrive - Arizona State University/Digital Verification & Testing/contuniation_of_digital_testing/homework03
 vtop_verichip
 Z1 DXx6 sv_std 3 std 0 22 VYECXdT12H8WgbUP_5Y6:3
-!s110 1772863780
+!s110 1772864502
 !i10b 1
-!s100 d6mU6U4@Z>BGcb5=8n^ea2
+!s100 VhW5`<DI9fF6bzRSPflcA3
 Z2 !s11b Dg1SIo80bB@j0V0VzS_@n1
-I`LSmC787J<V87bWheGfhD2
+I?DU5hMnYg?bBCkcZca[7B2
 Z3 VDg1SIo80bB@j0V0VzS_@n1
 S1
 R0
-w1772863668
+w1772864424
 8top_verichip.sv
 Ftop_verichip.sv
-!i122 43
-L0 58 476
+!i122 46
+L0 58 502
 Z4 OV;L;2020.1;71
 r1
 !s85 0
 31
-!s108 1772863780.000000
+Z5 !s108 1772864501.000000
 !s107 top_verichip.sv|
 !s90 -reportprogress|300|-sv|top_verichip.sv|
 !i113 1
 o-sv
-Z5 tCvgOpt 0
+Z6 tCvgOpt 0
 vverichip
 R1
-!s110 1772864389
+!s110 1772864501
 !i10b 1
 !s100 o]moG]meSc2EzE]hF^lk:0
 R2
@@ -47,15 +47,15 @@ R0
 w1772485608
 8verichip.sv
 Fverichip.sv
-!i122 44
+!i122 45
 L0 1 441
 R4
 r1
 !s85 0
 31
-!s108 1772864389.000000
+R5
 !s107 verichip.sv|
 !s90 -reportprogress|300|-sv|verichip.sv|
 !i113 1
 o-sv
-R5
+R6

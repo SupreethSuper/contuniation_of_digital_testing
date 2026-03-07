@@ -512,23 +512,19 @@ gold   <= 1'b1;
 
 
 
-//aliasing type 2 6 bit address
+// write to base address
 `CLK_WAIT
-`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1);
+`SET_WRITE(7'h10, 16'h5555, 2'b11, 1'b1);
 
+// write to alias (bit6 flipped)
 `CLK_WAIT
-`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`SET_WRITE(7'h50, 16'h0000, 2'b11, 1'b1);
 
+// read original
 `CLK_WAIT
-`SET_WRITE(6'h10, 16'h0000, 2'b11, 1'b1);
-
-`CLK_WAIT
-`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`SET_READ(7'h10, 1'b1);
 `READ_WAIT
-`CHECK_VAL(16'h5555);
-`CLEAR_BUS
-//=======================================================================
-
+`CHECK_VAL(16'h0000);   // should change if aliasing is correct
 
 
 
