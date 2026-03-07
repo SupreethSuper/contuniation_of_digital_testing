@@ -509,6 +509,32 @@ gold   <= 1'b1;
 
 //=======================================================================
 
+
+
+
+//aliasing type 2 6 bit address
+`CLK_WAIT
+`SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'5555, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+
+`CLK_WAIT
+`SET_WRITE(6'h10, 16'h0000, 2'b11, 1'b1);
+
+`CLK_WAIT
+`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1);
+`READ_WAIT
+`CHECK_VAL(16'5555);
+`CLEAR_BUS
+//=======================================================================
+
+
+
+
+
+
+
   #5 $finish;
 end
 

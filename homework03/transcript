@@ -4,40 +4,31 @@
 # vmap work work 
 # Modifying modelsim.ini
 # Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
-# Start time: 22:46:35 on Mar 06,2026
+# Start time: 23:09:40 on Mar 06,2026
 # vlog -reportprogress 300 -sv verichip.sv 
 # -- Compiling module verichip
 # 
 # Top level modules:
 # 	verichip
-# End time: 22:46:35 on Mar 06,2026, Elapsed time: 0:00:00
+# End time: 23:09:40 on Mar 06,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
-# Start time: 22:46:35 on Mar 06,2026
+# Start time: 23:09:40 on Mar 06,2026
 # vlog -reportprogress 300 -sv top_verichip.sv 
 # -- Compiling module top_verichip
 # 
 # Top level modules:
 # 	top_verichip
-# End time: 22:46:35 on Mar 06,2026, Elapsed time: 0:00:00
+# End time: 23:09:40 on Mar 06,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim work.top_verichip 
-# Start time: 22:46:36 on Mar 06,2026
+# Start time: 23:09:40 on Mar 06,2026
 # Loading sv_std.std
 # Loading work.top_verichip
 # Loading work.verichip
-# ** Note: $finish    : top_verichip.sv(476)
-#    Time: 805 ns  Iteration: 0  Instance: /top_verichip
+# ** Note: $finish    : top_verichip.sv(512)
+#    Time: 830 ns  Iteration: 0  Instance: /top_verichip
 # 1
-# Break in Module top_verichip at top_verichip.sv line 476
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# Break key hit
-# End time: 22:47:18 on Mar 06,2026, Elapsed time: 0:00:42
+# Break in Module top_verichip at top_verichip.sv line 512
+# End time: 23:10:07 on Mar 06,2026, Elapsed time: 0:00:27
 # Errors: 0, Warnings: 0
