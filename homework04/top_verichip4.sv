@@ -41,7 +41,7 @@
    wait( clk == 1'b1 );             \
    rst_b <= 1'b1;
 
-module top_verichip ();
+module top_verichip4 ();
 
 logic clk;                       // system clock
 logic rst_b;                     // chip reset
@@ -433,7 +433,7 @@ begin
    #5 $finish;
 end // initial begin
 
-verichip verichip (.clk           ( clk            ),    // system clock
+verichip4 verichip4 (.clk           ( clk            ),    // system clock
                    .rst_b         ( rst_b          ),    // chip reset
                    .export_disable( export_disable ),    // disable features
                    .interrupt_1   ( interrupt_1    ),    // first interrupt
