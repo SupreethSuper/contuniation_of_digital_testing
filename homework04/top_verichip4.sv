@@ -77,6 +77,10 @@ localparam VCHIP_ALU_SWA   = 16'h0005;
 localparam VCHIP_ALU_SHL   = 16'h0006;
 localparam VCHIP_ALU_SHR   = 16'h0007;
 
+localparam VCHIP_ALU_VER = 4'h2;    // current ALU version
+localparam VCHIP_MAJ_VER = 4'h1;
+localparam VCHIP_MIN_VER = 4'h0;
+
 initial
 begin
    clk <= 1'b0;
@@ -429,6 +433,46 @@ begin
    `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
    #10;// Make sure 0000 is read back from ALU left (write to unused address may clear register)
    `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
+
+
+
+//===============================================h4 content now================================
+
+//version register test
+   `CLEAR_ALL
+   `CHIP_RESET
+
+   //RESET STATE
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h {1'b0, 3'b000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER});
+   `CLEAR_BUS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
    #5 $finish;
 end // initial begin
