@@ -1,454 +1,441 @@
-`timescale 1ns/1ps
+module verichip4(input logic clk,                       // system clock
+                 input logic rst_b,                     // chip reset
+                 input logic export_disable,            // disable features
+                 output logic interrupt_1,              // first interrupt
+                 output logic interrupt_2,              // second interrupt
 
-`define SET_WRITE(addr,val,bytes,cs)   \
-   rw_ <= 1'b0;                     \
-   chip_select <= cs;               \
-   byte_en <= bytes;                \
-   address <= addr;                 \
-   data_in <= val; 
+                 input logic maroon,                    // maroon state machine input
+                 input logic gold,                      // gold state machine input
 
-`define SET_READ(addr,cs)           \
-   rw_ <= 1'b1;                     \
-   chip_select <= cs;               \
-   byte_en <= 2'b00;                \
-   address <= addr;                 \
-   data_in <= 16'h0;
+                 input logic chip_select,               // target of r/w
+                 input logic [6:0] address,             // address bus
+                 input logic [1:0] byte_en,             // write byte enables
+                 input logic       rw_,                 // read/write
+                 input logic [15:0] data_in,            // input data bus
 
-`define CLEAR_BUS                   \
-   chip_select    <= 1'b0;          \
-   address        <= 7'h0;          \
-   byte_en        <= 2'h0;          \
-   rw_            <= 1'b1;          \
-   data_in        <= 16'h0; 
+                 output logic [15:0] data_out);          // output data bus
 
-`define CLEAR_ALL                   \
-   export_disable <= 1'b0;          \
-   maroon         <= 1'b0;          \
-   gold           <= 1'b0;          \
-   `CLEAR_BUS
+localparam VCHIP_ALU_VER = 4'h2;    // current ALU version
+localparam VCHIP_MAJ_VER = 4'h1;
+localparam VCHIP_MIN_VER = 4'h0;
 
-`define CHECK_VAL(val)              \
-   if ( data_out != val )           \
-       $display("bad read, got %h but expected %h at %t",data_out,val,$time());
+localparam VCHIP_STATE_RESET = 4'h0;
+localparam VCHIP_STATE_NORM  = 4'h1;
+localparam VCHIP_STATE_ERR   = 4'h2;
+localparam VCHIP_STATE_EXP   = 4'h8;
+localparam VCHIP_STATE_LOST  = 4'hF;
 
-`define CHECK_RW(addr,wval,rval,bytes,cs)    \
-   `WRITE_REG(addr,wval,bytes,cs)            \
-   `READ_REG(addr,rval,cs)
+localparam VCHIP_ADDR_VER = 7'h00;
+localparam VCHIP_ADDR_STA = 7'h04;
+localparam VCHIP_ADDR_CMD = 7'h08;
+localparam VCHIP_ADDR_CON = 7'h0C;
+localparam VCHIP_ADDR_LFT = 7'h10;
+localparam VCHIP_ADDR_RGT = 7'h14;
+localparam VCHIP_ADDR_ALU = 7'h18;
 
-`define CHIP_RESET                  \
-   wait( clk == 1'b0 );             \
-   rst_b <= 1'b0;                   \
-   wait( clk == 1'b1 );             \
-   rst_b <= 1'b1;
+localparam VCHIP_CMD_NONE = 4'h0;
 
-module top_verichip ();
+localparam VCHIP_STA_INT2 = 9;      // bit position of interrupt 2
+localparam VCHIP_STA_INT1 = 8;      // bit position of interrupt 1
 
-logic clk;                       // system clock
-logic rst_b;                     // chip reset
-logic export_disable;            // disable features
-logic interrupt_1;               // first interrupt
-logic interrupt_2;               // second interrupt
+localparam VCHIP_CMD_LEFT = 3;      // left bit of command in command register
+localparam VCHIP_CMD_VAL  = 15;     // valid bit
+localparam VCHIP_CMD_NON = 0;
+localparam VCHIP_CMD_ADD = 1;
+localparam VCHIP_CMD_SUB = 2;
+localparam VCHIP_CMD_MVL = 3;
+localparam VCHIP_CMD_MVR = 4;
+localparam VCHIP_CMD_SWA = 5;
+localparam VCHIP_CMD_SHL = 6;
+localparam VCHIP_CMD_SHR = 7;
+localparam VCHIP_LAST_CMD = 7;
+localparam VCHIP_LAST_EXP_CMD = 2;
 
-logic maroon;                    // maroon state machine input
-logic gold;                      // gold state machine input
+// Version Register flops
+logic export_dis;                   // if 1, export disable is 1
+logic [15:0] version_reg;           // concat of bits
 
-logic chip_select;               // target of r/w
-logic [6:0] address;             // address bus
-logic [1:0] byte_en;             // write byte enables
-logic       rw_;                 // read/write
-logic [15:0] data_in;            // input data bus
+// Status Regiser flops
+logic        int2;                  // interrupt 2
+logic        int1;                  // interrupt 1
+logic [3:0]  state;                 // state machine state
+logic [15:0] status_reg;            // concat of bits
+logic [3:0]  next_state;            // next state machine state
 
-logic [15:0] data_out;           // output data bus
+// Command Register flops
+logic        valid;                 // command is valid
+logic [3:0]  cmd;                   // the command
+logic [15:0] cmd_reg;               // concat of bits
+logic        bad_exp_cmd;           // bad command when export disable asserted
+logic        bad_cmd;               // undefined command
 
-localparam VCHIP_VER_ADDR       = 7'h00;
-localparam VCHIP_STA_ADDR       = 7'h04;
-localparam VCHIP_CMD_ADDR       = 7'h08;
-localparam VCHIP_CON_ADDR       = 7'h0C;
-localparam VCHIP_ALU_LEFT_ADDR  = 7'h10;
-localparam VCHIP_ALU_RIGHT_ADDR = 7'h14;
-localparam VCHIP_ALU_OUT_ADDR   = 7'h18;
+// Configuration Register flops
+logic int2_en;                      // enable interrupt 2
+logic int1_en;                      // enable interrupt 1
+logic [15:0] con_reg;               // concat of bits
 
-localparam VCHIP_ALU_VALID = 16'h8000;
-localparam VCHIP_ALU_ADD   = 16'h0001;
-localparam VCHIP_ALU_SUB   = 16'h0002;
-localparam VCHIP_ALU_MVL   = 16'h0003;
-localparam VCHIP_ALU_MVR   = 16'h0004;
-localparam VCHIP_ALU_SWA   = 16'h0005;
-localparam VCHIP_ALU_SHL   = 16'h0006;
-localparam VCHIP_ALU_SHR   = 16'h0007;
+// ALU Registers
+logic [15:0] alu_left;              // left input
+logic [15:0] alu_right;             // right input
+logic [15:0] alu_out;               // result
+logic        overflow;              // bad add/sub
+logic [15:0] alu_result;            // result
+logic [15:0] next_left;             // value from ALU to load
+logic [15:0] next_right;            // value from ALU to load
+logic        load_left;             // load value from ALU
+logic        load_right;            // load value from ALU
 
-initial
+logic [15:0] data_out_tmp;          // read data
+
+always_ff @ ( posedge clk or negedge rst_b )
 begin
-   clk <= 1'b0;
-   while ( 1 )
-   begin
-      #5 clk <= 1'b1;
-      #5 clk <= 1'b0;
-   end
+  if ( !rst_b )
+  begin
+     export_dis <= export_disable;
+     state      <= VCHIP_STATE_RESET;
+     alu_out    <= 16'h0;
+  end // if ( !rst_b )
+  else
+  begin
+     export_dis <= export_disable;
+     state <= next_state;
+     alu_out <= alu_result;
+  end // else: !if( !rst_b )
 end
 
-initial
+assign bad_exp_cmd = export_dis && valid && ( cmd > VCHIP_LAST_EXP_CMD );
+assign bad_cmd     = valid && ( cmd > VCHIP_LAST_CMD );
+assign overflow    = valid &&
+                     ( ( ( cmd == VCHIP_CMD_ADD ) &&                                      // adding
+                         ( ( alu_left[15] && alu_right[15] && !alu_result[15] ) ||        // two neg -> pos
+                           ( !alu_left[15] && !alu_right[15] && alu_result[15] ) ) ) ||   // two pos -> neg
+                        ( ( cmd == VCHIP_CMD_SUB ) &&                                     // subtracting
+                          ( ( alu_left[15] && !alu_right[15] && !alu_result[15] ) ||      // neg - pos -> pos
+                            ( !alu_left[15] && alu_right[15] && alu_result[15] ) ) ) );   // pos - neg -> neg
+
+assign interrupt_1 = int1;
+assign interrupt_2 = int2;
+
+always_comb
 begin
-   `CLEAR_ALL
-   `CHIP_RESET
+   case ( state )
+     VCHIP_STATE_RESET:
+     begin
+        if ( !maroon && gold )
+           next_state = VCHIP_STATE_NORM;
+        else
+           next_state = VCHIP_STATE_RESET;
+     end // case: VCHIP_STATE_RESET
 
-   // Test ALU Left Register in Reset State (Write and Read) keeping byte enable and chip select on
-   // Attempt to write 0000 to ALU Left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;
- //Attempt to read 0000 from ALU left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-// Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
-    //Similarly, apply this method for other test inputs in the same state.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFFFF)
+     VCHIP_STATE_NORM:
+     begin
+        if ( export_dis && valid && bad_exp_cmd )
+           next_state = VCHIP_STATE_EXP;
+        else if ( valid && ( bad_cmd || overflow ) )
+           next_state = VCHIP_STATE_ERR;
+        else
+           next_state = VCHIP_STATE_NORM;
+     end // case: VCHIP_STATE_NORM
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hAAAA)
+     VCHIP_STATE_ERR:
+     begin
+        if ( maroon && !gold )
+           next_state = VCHIP_STATE_NORM;
+        else
+           next_state = VCHIP_STATE_ERR;
+     end // case: VCHIP_STATE_ERR
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h5555)
-   #10;
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-    
- #10;
-   `CHECK_VAL(16'h0000)
+     VCHIP_STATE_EXP:
+     begin
+        next_state = VCHIP_STATE_EXP;
+     end // case: VCHIP_STATE_EXP
 
-   // Test ALU Left Register in Normal State (Write and Read) keeping byte enable and chip select on
-   `CLEAR_ALL
-   `CHIP_RESET
-    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   #10; //Attempt to write 0000 to ALU Left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10; //Attempt to read 0000 from ALU left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;  // Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
-    // Similarly, apply this method for other test inputs within the same state.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFFFF)
+     default:
+     begin
+        next_state = VCHIP_STATE_LOST;
+     end // case: default
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hAAAA)
+   endcase // case ( state )
+end // always_comb
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h5555)
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     int1       <= 1'b0;
+  end // if ( !rst_b )
+  else if ( int1_en && ( state == VCHIP_STATE_NORM ) && valid &&
+            ( bad_cmd || overflow ) )
+  begin
+     int1 <= 1'b1;
+  end // if ( ( state == VCHIP_STATE_NORM ) && valid &&...
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_STA ) && byte_en[1] )
+  begin
+     if ( data_in[VCHIP_STA_INT1] )
+        int1 <= 1'b0;
+  end // else: !if( !rst_b )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     int2       <= 1'b0;
+  end // if ( !rst_b )
+  else if ( int2_en && ( state == VCHIP_STATE_NORM ) && valid && bad_exp_cmd )
+  begin
+     int2 <= 1'b1;
+  end // if ( ( state == VCHIP_STATE_NORM ) && valid &&...
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_STA ) && byte_en[1] )
+  begin
+     if ( data_in[VCHIP_STA_INT2] )
+        int2 <= 1'b0;
+  end // else: !if( !rst_b )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
-   // Test ALU Left Register in Error State (Write and Read) keeping byte enable and chip select on
-   `CLEAR_ALL
-   `CHIP_RESET
-    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-    //Attempt to write 0100 to Configuration register
-   `SET_WRITE(VCHIP_CON_ADDR,16'h0100,2'b11,1'b1)
-   #10; //Attempt to write 8008 to command register - To transition from Normal state to Error state
-   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008,2'b11,1'b1)
-   #10; //Attempt to write 0000 to ALU_Left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10; // Make sure 0000 is read back from ALU_Left
-   `CHECK_VAL(16'h0000)
-    // Similarly, apply this method for other test inputs within the same state.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     valid <= 1'b0;
+     cmd <= VCHIP_CMD_NONE;
+  end // if ( !rst_b )
+  else if ( next_state == VCHIP_STATE_EXP )
+  begin
+     valid <= 1'b0;
+     cmd <= VCHIP_CMD_NONE;
+  end // if ( next_state == VCHIP_STATE_EXP )
+  else if ( state == VCHIP_STATE_ERR )
+  begin
+     valid <= 1'b0;
+     cmd <= cmd;
+  end // if ( state == VCHIP_STATE_ERR )
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+  begin
+     valid <= data_in[VCHIP_CMD_VAL] && byte_en[1];
+     if ( byte_en[0] )
+        cmd <= data_in[VCHIP_CMD_LEFT:0];
+  end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+  else
+  begin
+     valid <= 1'b0;
+  end // else: !if( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     int2_en    <= 1'b0;
+     int1_en    <= 1'b0;
+  end // if ( !rst_b )
+  else if ( next_state == VCHIP_STATE_EXP )
+  begin
+     int2_en <= 1'b0;
+     int1_en <= 1'b0;
+  end // if ( next_state == VCHIP_STATE_EXP )
+  else if ( state == VCHIP_STATE_ERR )
+  begin
+     int2_en <= int2_en;
+     int1_en <= int1_en;
+  end // if ( state == VCHIP_STATE_ERR )
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CON ) && byte_en[1] )
+  begin
+     int2_en <= data_in[VCHIP_STA_INT2];
+     int1_en <= data_in[VCHIP_STA_INT1];
+  end // else: !if( !rst_b )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     alu_left <= 16'h0;
+  end // if ( !rst_b )
+  else if ( next_state == VCHIP_STATE_EXP )
+  begin
+     alu_left <= 16'h0;
+  end // if ( next_state == VCHIP_STATE_EXP )
+  else if ( state == VCHIP_STATE_ERR )
+  begin
+     alu_left <= alu_left;
+  end // if ( state == VCHIP_STATE_ERR )
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+  begin
+     if ( byte_en[0] )
+        alu_left[7:0] <= data_in[7:0];
+     if ( byte_en[1] )
+        alu_left[15:8] <= data_in[15:8];
+  end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+  else if ( load_left )
+  begin
+     alu_left <= next_left;
+  end // if ( load_left )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
-`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+always_ff @ ( posedge clk or negedge rst_b )
+begin
+  if ( !rst_b )
+  begin
+     alu_right <= 16'h0;
+  end // if ( !rst_b )
+  else if ( next_state == VCHIP_STATE_EXP )
+  begin
+     alu_right <= 16'h0;
+  end // if ( next_state == VCHIP_STATE_EXP )
+  else if ( state == VCHIP_STATE_ERR )
+  begin
+     alu_right <= alu_right;
+  end // if ( state == VCHIP_STATE_ERR )
+  else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_RGT ) )
+  begin
+     if ( byte_en[0] )
+        alu_right[7:0] <= data_in[7:0];
+     if ( byte_en[1] )
+        alu_right[15:8] <= data_in[15:8];
+  end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+  else if ( load_right )
+  begin
+     alu_right <= next_right;
+  end // if ( load_right )
+end // always_ff @ ( posedge clk or negedge rst_b )
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+always_comb
+begin
+  if ( ( next_state == VCHIP_STATE_EXP ) && ( address != VCHIP_ADDR_STA ) )
+     data_out = 16'h0;
+  else if ( chip_select )
+     data_out = data_out_tmp;
+  else
+     data_out = 16'h0;
+end // always_comb
 
-   // Test ALU Left Register in Export Violation State (Write and Read) keeping byte enable and chip select on
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   export_disable <= 1'b1; //This signal disables certain export-required commands. Invalid commands will transition the state machine to the Export Violation state.
-   //Attempt to write 0200 to Configuration register
-   `SET_WRITE(VCHIP_CON_ADDR,16'h0200,2'b11,1'b1)
-   #10;//Attempt to write 800A to command register - To transition from Normal state to Export violation state
-   `SET_WRITE(VCHIP_CMD_ADDR,16'h800A,2'b11,1'b1)
-   #10;//Attempt to write 0000 to ALU_Left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10; // Make sure 0000 is read back from ALU_Left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same state.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+assign version_reg = { export_dis, 3'h0, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER };
+assign status_reg  = { 6'h0, int2, int1, 4'h0, state };
+assign cmd_reg     = { valid, 11'h0, cmd };
+assign con_reg     = { 6'h0, int2_en, int1_en, 8'h0 };
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+always_comb
+begin
+  case ( address )
+    VCHIP_ADDR_VER: data_out_tmp = version_reg;
+    VCHIP_ADDR_STA: data_out_tmp = status_reg;
+    VCHIP_ADDR_CMD: data_out_tmp = cmd_reg;
+    VCHIP_ADDR_CON: data_out_tmp = con_reg;
+    VCHIP_ADDR_LFT: data_out_tmp = alu_left;
+    VCHIP_ADDR_RGT: data_out_tmp = alu_right;
+    VCHIP_ADDR_ALU: data_out_tmp = alu_out;
 
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+    default: data_out_tmp = 16'h0;
+  endcase // case ( address )
+end // always_comb
 
+// build the ALU
+always_comb
+begin
+   if ( next_state == VCHIP_STATE_EXP )
+   begin
+      alu_result = 16'h0;
+      load_left = 1'b0;
+      load_right = 1'b0;
+      next_left = 16'h0;
+      next_right = 16'h0;
+   end // if ( next_state == VCHIP_STATE_EXP )
 
-   // Test Byte Enable Combinations with chip select on state
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write 0000 to ALU Left when byte enable is 00
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b00, 1'b1)
-   #10;//Attempt to read 0000 from ALU left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b00 ,1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b00,1'b1)
-    
- #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b00, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0000)
+   else if ( ( state != VCHIP_STATE_NORM ) || !valid || bad_cmd )
+   begin
+      alu_result = alu_out;
+      load_left = 1'b0;
+      load_right = 1'b0;
+      next_left = 16'h0;
+      next_right = 16'h0;
+   end // if ( ( state != VCHIP_STATE_NORM ) || !valid || bad_cmd )
 
+   else
+   begin
+      case ( cmd )
+        VCHIP_CMD_NONE:
+        begin
+           alu_result = alu_out;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_NONE
 
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write 0000 to ALU Left when byte enable is 01
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b01, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU_Left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b01, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h00AA)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b01, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0055)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b01, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h00FF)
+        VCHIP_CMD_ADD:
+        begin
+           alu_result = alu_left + alu_right;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_ADD
 
+        VCHIP_CMD_SUB:
+        begin
+           alu_result = alu_left - alu_right;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_SUB
 
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1;// Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write 0000 to ALU Left when byte enable is 10
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b10, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU_Left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b10, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hAA00)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b10, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h5500)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b10, 1'b1)
-   #10;
+        VCHIP_CMD_MVL:   // move out to left
+        begin
+           alu_result = alu_out;
+           load_left = 1'b1;
+           load_right = 1'b0;
+           next_left = alu_out;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_MVL
 
-`SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFF00)
+        VCHIP_CMD_MVR:   // move out to right
+        begin
+           alu_result = alu_out;
+           load_left = 1'b0;
+           load_right = 1'b1;
+           next_left = 16'h0;
+           next_right = alu_out;
+        end // case: VCHIP_CMD_MVR
 
+        VCHIP_CMD_SWA:
+        begin
+           alu_result = alu_out;
+           load_left = 1'b1;
+           load_right = 1'b1;
+           next_left = alu_right;
+           next_right = alu_left;
+        end // case: VCHIP_CMD_SWA
 
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write 0000 to ALU Left when byte enable is 11
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU_Left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hAAAA)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h5555)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFFFF)
+        VCHIP_CMD_SHL:
+        begin
+           alu_result = alu_left << alu_right;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_SHL
 
+        VCHIP_CMD_SHR:
+        begin
+           alu_result = alu_left >> alu_right;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: VCHIP_CMD_SHR
 
-
-   // Test Aliasing on different operations
-  //Check for Aliasing with Chip Select
-   `CHIP_RESET
-   `CLEAR_ALL
-   //Attempt to write 0000 to ALU_Left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
-   #10;// Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
-   #10;
-   `CHECK_VAL(16'h0000)
-
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
-   #10;
-   `CHECK_VAL(16'h0000)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b0)
-   #10;
-   `CHECK_VAL(16'h0000)
-
-   //Check for Aliasing without Chip Select
-   // Clear all for a spotless interface
-   `CLEAR_ALL
-   //Attempt to write AAAA to ALU_Left when chip select is off
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b0)
-   #10; //Attempt to read AAAA from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure FFFF is read back from ALU_Left
-   `CHECK_VAL(16'hFFFF)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b0)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFFFF)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b0)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'hFFFF)
-   //Attempt to write 5555 to ALU Left when chip select is on
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
-   #10;//Attempt to read 5555 from ALU left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 5555 is read back from ALU left
-   `CHECK_VAL(16'h5555)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b0)
-   #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h5555)
-
-   //Write to Correct ALU LEFT Register
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write AAAA to 7'h50 address
-   `SET_WRITE(7'h50, 16'hAAAA, 2'b11, 1'b1)
-   #10;//Attempt to write FFFF from ALU left
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;//Attempt to read AAAA from 7'h50
-   `SET_READ(7'h50, 1'b1)
-   #10;// Make sure 0000 is read back from 7'h50 (unused address returns 0)
-   `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
-
-//Write to Aliased Address (7'h50)
-   `CHIP_RESET
-   `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-  //Attempt to write AAAA to ALU_Left
-  `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
-   #10; //Attempt to write 5555 to 7'h50 address
-   `SET_WRITE(7'h50, 16'h5555, 2'b11, 1'b1)
-   #10; //Attempt to read AAAA from ALU_Left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU left (write to unused address may clear register)
-   `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
-
-   #5 $finish;
-end // initial begin
-
-verichip verichip (.clk           ( clk            ),    // system clock
-                   .rst_b         ( rst_b          ),    // chip reset
-                   .export_disable( export_disable ),    // disable features
-                   .interrupt_1   ( interrupt_1    ),    // first interrupt
-                   .interrupt_2   ( interrupt_2    ),    // second interrupt
- 
-                   .maroon        ( maroon         ),    // maroon state machine input
-                   .gold          ( gold           ),    // gold state machine input
-
-                   .chip_select   ( chip_select    ),    // target of r/w
-                   .address       ( address        ),    // address bus
-                   .byte_en       ( byte_en        ),    // write byte enables
-                   .rw_           ( rw_            ),    // read/write
-                   .data_in       ( data_in        ),    // data bus
-
-                   .data_out      ( data_out       ) );  // output data bus
-
+        default:
+        begin
+           alu_result = alu_out;
+           load_left = 1'b0;
+           load_right = 1'b0;
+           next_left = 16'h0;
+           next_right = 16'h0;
+        end // case: default
+      endcase // case ( cmd )
+   end // else: !if( ( state != VCHIP_STATE_NORM ) || !valid || bad_cmd )
+end // always_comb
 
 endmodule
