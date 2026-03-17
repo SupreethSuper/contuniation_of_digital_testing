@@ -91,6 +91,11 @@ begin
    end
 end
 
+initial begin
+   $dumpfile("verichip4.vcd");
+   $dumpvars(0, top_verichip4);
+end
+
 initial
 begin
    `CLEAR_ALL
