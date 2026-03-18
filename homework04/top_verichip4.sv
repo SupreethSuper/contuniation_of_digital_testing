@@ -444,15 +444,16 @@ begin
 //===============================================h4 content now================================
 
 //version register test
-   `CLEAR_ALL
+`CLEAR_ALL
    `CHIP_RESET
 
-   //RESET STATE
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+ //Attempt to read 0000 from ALU left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
-   `CHECK_VAL({1'b0, 3'b000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER});
-   `CLEAR_BUS
-
+// Make sure 0000 is read back from ALU left
+   `CHECK_VAL(16'h0000)
 
 
 
