@@ -444,19 +444,44 @@ begin
 //===============================================h4 content now================================
 
 //version register test
-`CLEAR_ALL
-   `CHIP_RESET
+// `CLEAR_ALL
+//    `CHIP_RESET
 
-   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+//    `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+//    #10;
+//  //Attempt to read 0000 from ALU left
+//    `SET_READ(VCHIP_VER_ADDR, 1'b1)
+//    #10;
+// // Make sure 0000 is read back from ALU left
+//    $display("reset state version reg\n\n\n\n");
+//    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+//    $display("reset state version reg ------end------\n\n\n\n");
+
+`SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1) //-------------write 1
+   #10;//Attempt to read 0000 from ALU_Left
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10; // Make sure 0000 is read back from ALU_Left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+    // Similarly, apply this method for other test inputs within the same state.
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1) //-------------write 2
    #10;
- //Attempt to read 0000 from ALU left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
-// Make sure 0000 is read back from ALU left
-   $display("reset state version reg\n\n\n\n");
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
-   $display("reset state version reg ------end------\n\n\n\n");
 
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1) //-------------write 3
+   #10;
+
+
+`SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
 
 
