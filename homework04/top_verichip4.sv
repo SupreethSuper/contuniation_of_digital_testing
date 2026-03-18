@@ -459,7 +459,16 @@ begin
 
 
 
-
+ //version register test  - Normal state
+    `CLEAR_ALL
+   `CHIP_RESET
+    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   #10; //Attempt to write 0000 to ALU Left
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10; //Attempt to read 0000 from ALU left
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;  // Make sure 0000 is read back from ALU left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
 
 
