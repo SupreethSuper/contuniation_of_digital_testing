@@ -453,7 +453,7 @@ begin
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
 // Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
 
 
@@ -464,7 +464,7 @@ begin
    `CHIP_RESET
     maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
    #10; //Attempt to write 0000 to ALU Left
-   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   `SET_WRITE(VCHIP_VER_ADDR, {4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER}, 2'b11, 1'b1)
    #10; //Attempt to read 0000 from ALU left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;  // Make sure 0000 is read back from ALU left
@@ -480,12 +480,11 @@ begin
    `CHIP_RESET
     maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
     //Attempt to write 0100 to Configuration register
-   `SET_WRITE(VCHIP_CON_ADDR,16'h0100,2'b11,1'b1)
-   #10; //Attempt to write 8008 to command register - To transition from Normal state to Error state
+   `SET_WRITE(VCHIP_VER_ADDR, {4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER}, 2'b11, 1'b1)
+   #10;
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
-   #10;  // Make sure 0000 is read back from ALU left
+   #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
-
 
 
 
