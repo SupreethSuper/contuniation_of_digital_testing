@@ -457,6 +457,7 @@ begin
 //    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 //    $display("reset state version reg ------end------\n\n\n\n");
 
+   $display("reset state version reg\n\n\n\n");
 `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1) //-------------write 1
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
@@ -471,6 +472,7 @@ begin
 
    `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1) //-------------write 3
    #10;
+    
 
 
 `SET_READ(VCHIP_VER_ADDR, 1'b1)
@@ -482,6 +484,7 @@ begin
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+    $display("reset state version reg ------end------\n\n\n\n");
 
 
 
