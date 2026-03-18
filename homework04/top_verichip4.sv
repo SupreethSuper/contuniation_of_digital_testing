@@ -475,7 +475,16 @@ begin
 
 
 
-
+//version register test - Error 
+   `CLEAR_ALL
+   `CHIP_RESET
+    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+    //Attempt to write 0100 to Configuration register
+   `SET_WRITE(VCHIP_CON_ADDR,16'h0100,2'b11,1'b1)
+   #10; //Attempt to write 8008 to command register - To transition from Normal state to Error state
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;  // Make sure 0000 is read back from ALU left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
 
 
