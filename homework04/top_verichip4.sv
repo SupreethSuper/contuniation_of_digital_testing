@@ -536,11 +536,32 @@ begin
    #10; //Attempt to write 8008 to command register - To transition from Normal state to Error state
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008,2'b11,1'b1)
    #10; //Attempt to write 0000 to ALU_Left
-   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   $display("error state version reg\n\n\n\n"); //----------brought to error state
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1) //-------------write 1
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10; // Make sure 0000 is read back from ALU_Left
-   $display("error state version reg\n\n\n\n");
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+    // Similarly, apply this method for other test inputs within the same state.
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1) //-------------write 2
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1) //-------------write 3
+   #10;
+    
+
+
+`SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
    $display("error state version reg ------end------\n\n\n\n");
 
