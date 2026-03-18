@@ -453,8 +453,9 @@ begin
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
 // Make sure 0000 is read back from ALU left
+   $display("reset state version reg\n\n\n\n");
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
-
+   $display("reset state version reg ------end------\n\n\n\n");
 
 
 
@@ -468,7 +469,9 @@ begin
    #10; //Attempt to read 0000 from ALU left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;  // Make sure 0000 is read back from ALU left
+   $display("normal state version reg\n\n\n\n");
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   $display("normal state version reg ------end------\n\n\n\n");
 
 
 
@@ -488,7 +491,9 @@ begin
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10; // Make sure 0000 is read back from ALU_Left
+   $display("error state version reg\n\n\n\n");
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   $display("error state version reg ------end------\n\n\n\n");
 
 
 // version register test - Export controlled
@@ -505,7 +510,9 @@ begin
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10; // Make sure 0000 is read back from ALU_Left
+   $display("export state version reg\n\n\n\n");
    `CHECK_VAL({1'b1, 3'b000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})  
+   $display("export state version reg ------end------\n\n\n\n");
 
 
 
