@@ -642,7 +642,7 @@ begin
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
- $display("\n\n\n xxxxxxxxxxxxxxxxxx byte enables 00 test end xxxxxxxxxxxxxxxxxxxxxxxx\n\n\n"); 
+ $display("\n\n\n ===================byte enables 00 test end==================\n\n\n"); 
 
 
 
