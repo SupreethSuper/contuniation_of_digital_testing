@@ -567,6 +567,7 @@ begin
 
 
 // version register test - Export controlled
+   $display("export state version reg\n\n\n\n");
 `CHIP_RESET
    `CLEAR_ALL
    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
@@ -576,12 +577,31 @@ begin
    #10;//Attempt to write 800A to command register - To transition from Normal state to Export violation state
    `SET_WRITE(VCHIP_CMD_ADDR,16'h800A,2'b11,1'b1)
    #10;//Attempt to write 0000 to ALU_Left
-   `SET_WRITE(VCHIP_VER_ADDR, 16'h5a5a, 2'b11, 1'b1)
+
+   //----------brought to export state
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10; // Make sure 0000 is read back from ALU_Left
-   $display("export state version reg\n\n\n\n");
-   `CHECK_VAL(16'h0000)  
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   // Similarly, apply this method for other test inputs within the same state.
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})  
    $display("export state version reg ------end------\n\n\n\n");
 
 
