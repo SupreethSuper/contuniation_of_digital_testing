@@ -498,27 +498,38 @@ begin
    //$display("normal state version reg\n\n\n\n");
     maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
    #10; //Attempt to write 0000 to ALU Left
+   
+   
+   
+   
+   
    `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1) //-------------write 1
    #10;//Attempt to read 0000 from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10; // Make sure 0000 is read back from ALU_Left
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
     // Similarly, apply this method for other test inputs within the same state.
+   
+   
+   
    `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1) //-------------write 2
    #10;
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
+   
+   
+   
    `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1) //-------------write 3
    #10;
-    
-
-
 `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
 
+   
+   
+   
    `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
    #10;
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
@@ -967,13 +978,13 @@ begin
 
 
 
-   // $display("writing 5555 to VCHIP_STA_ADDR\n\n");
-   // `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
-   // #10;
-   // `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   // $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1});
-   // #10;
-   // `CHECK_VAL(16'h0001)
+   $display("writing 5555 to VCHIP_STA_ADDR\n\n");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1});
+   #10;
+   `CHECK_VAL(16'h0001) 
    //------------------------------------end of status R/W--------------------------------------------------------------------------------------------------------------------------
    $display("\n\n\n normal state status reg ------end------\n\n\n\n");
 
