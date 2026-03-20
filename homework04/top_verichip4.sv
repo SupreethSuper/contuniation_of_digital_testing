@@ -853,11 +853,12 @@ begin
 // Test Aliasing on different operations
   //Check for Aliasing with Chip Select
    $display("\n\n\n================== start of alias address test=======================\n\n\n");
-   `CHIP_RESET
+  `CHIP_RESET
    `CLEAR_ALL
    //Attempt to write 0000 to ALU_Left
    $display("transition to Normal state\n\n");
    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   #10; //allow to transition
    $display("writing 0000 to VCHIP_VER_ADDR\n\n");
    `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
    #10;//Attempt to read 0000 from ALU_Left
@@ -887,7 +888,7 @@ begin
    $display("reading FFFF from VCHIP_VER_ADDR\n\n");
    `SET_READ(VCHIP_VER_ADDR, 1'b0)
    #10;
-   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER}) 
 
    //Check for Aliasing without Chip Select
    // Clear all for a spotless interface
@@ -895,6 +896,7 @@ begin
    $display("chip select is off\n\n");
    `CLEAR_ALL
    maroon <= 1'b1; gold <= 1'b0; // Maroon = 1 and Gold = 0, for transitioning to Safe State.
+   #10; //allow to transition
    //Attempt to write AAAA to ALU_Left when chip select is off
    $display("writing AAAA to VCHIP_VER_ADDR\n\n");
    `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b0)
