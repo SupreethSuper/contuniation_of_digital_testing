@@ -987,9 +987,7 @@ begin
    `CHECK_VAL(16'h0001) 
 
 
-//-------bad command test, for INT 1 clear test -------------
 
- `SET_WRITE(VCHIP_STA_ADDR, )
 
 
 
