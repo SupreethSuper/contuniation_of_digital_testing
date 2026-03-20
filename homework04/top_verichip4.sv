@@ -858,6 +858,36 @@ begin
   
 
 
+   // Alias address 7'h50 with chip_select=0 - write should be ignored
+   `CHIP_RESET
+   `CLEAR_ALL
+   maroon <= 1'b0; gold <= 1'b1;
+   `CLK_WAIT(2)
+   // Pre-load a known value at 7'h10 with chip_select=1
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   // Now attempt write to alias 7'h50 with chip_select=0 (should be ignored)
+   `SET_WRITE(7'h50, 16'hDEAD, 2'b11, 1'b0)
+   #10;
+   // Read back 7'h10 - should still be AAAA
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hAAAA)
+
+   // Alias address 7'h50 read with chip_select=0 - should not be driven
+   `CHIP_RESET
+   `CLEAR_ALL
+   maroon <= 1'b0; gold <= 1'b1;
+   `CLK_WAIT(2)
+   `SET_WRITE(7'h50, 16'hBEEF, 2'b11, 1'b1)
+   #10;
+   // Read alias with chip_select=0 - chip should not drive data_out
+   `SET_READ(7'h50, 1'b0)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+
+
 
  // $display("\n\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx end of alias address test xxxxxxxxxxxxxxxxxxxxxxxx\n\n\n");
 
