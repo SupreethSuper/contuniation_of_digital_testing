@@ -994,10 +994,10 @@ begin
    // Write LEFT=FFFF, RIGHT=0001, issue ADD
    $display("Trigger INT1 via overflow - need to be in Normal first\n\n");
    $display("writing FFFF to VCHIP_LEFT_ADDR\n\n");
-   `SET_WRITE(VCHIP_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
    $display("writing 0001 to VCHIP_RIGHT_ADDR\n\n");
-   `SET_WRITE(VCHIP_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
    #10;
    $display("writing 8001 to VCHIP_CMD_ADDR\n\n");
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1) // Valid=1, CMD=add
