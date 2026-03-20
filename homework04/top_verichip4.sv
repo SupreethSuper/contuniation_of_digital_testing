@@ -987,39 +987,109 @@ begin
    `CHECK_VAL(16'h0001) 
 
 
+//-------bad command test, for INT 1 clear test -------------
+
+ `SET_WRITE(VCHIP_STA_ADDR, )
 
 
 
-      // Trigger INT1 via overflow - need to be in Normal first
-   // Write LEFT=FFFF, RIGHT=0001, issue ADD
-   $display("Trigger INT1 via overflow - need to be in Normal first\n\n");
-   $display("writing FFFF to VCHIP_LEFT_ADDR\n\n");
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;
-   $display("writing 0001 to VCHIP_RIGHT_ADDR\n\n");
-   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
-   #10;
-   $display("writing 8001 to VCHIP_CMD_ADDR\n\n");
-   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1) // Valid=1, CMD=add
-   #10;
-   `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0102) // Normal→Error=4'h2, INT1 set=bit8
-
-   //bring back to normal state to clear the INT1
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   #10;
-
-   // Now clear INT1 by writing 1 to bit 8
-   $display("writing 0100 to VCHIP_STA_ADDR\n\n");
-   `SET_WRITE(VCHIP_STA_ADDR, 16'h0100, 2'b11, 1'b1)
-   #10;
-   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1});
-   `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   #10;
-   `CHECK_VAL(16'h0001) // Still in Error, but INT1 cleared
+   
    //------------------------------------end of status R/W--------------------------------------------------------------------------------------------------------------------------
    $display("\n\n\n normal state status reg ------end------\n\n\n\n");
+
+
+
+//version register test - Error 
+`CLEAR_ALL
+   `CHIP_RESET
+   $display("\n\n\n error state status reg \n\n\n\n");
+   //------------------------------------version R/W--------------------------------------------------------------------------------------------------------------------------
+    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+    //Attempt to write 0100 to Configuration register
+   `SET_WRITE(VCHIP_CON_ADDR,16'h0100,2'b11,1'b1)
+   #10; //Attempt to write 8008 to command register - To transition from Normal state to Error state
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008,2'b11,1'b1)
+   #10; //Attempt to write 0000 to ALU_Left
+//  $display("error state version reg\n\n\n\n"); //----------brought to error state
+
+
+
+   $display("writing 0000 to VCHIP_STA_ADDR\n\n");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1) //-------------write 1
+   #10;//Attempt to read 0000 from ALU_Left
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2});
+   #10; // Make sure 0000 is read back from ALU_Left
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2})
+    // Similarly, apply this method for other test inputs within the same state.
+   
+   
+   
+   
+   
+   $display("writing FFFF to VCHIP_STA_ADDR\n\n");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1) //-------------write 2
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2});
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2})
+
+  
+  
+  
+  
+  
+  
+   $display("writing AAAA to VCHIP_STA_ADDR\n\n");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1) //-------------write 3
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2});
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2})
+
+  
+  
+  
+  
+  
+  
+  
+  
+   $display("writing 5555 to VCHIP_STA_ADDR\n\n");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2});
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2})
+
+
+
+   //bring back to normal, and make it zero
+   $display("\n\n\ntransitioning back to normal\n\n\n");
+   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1});
+   #10; // Make sure 0000 is read back from ALU_Left
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1})
+   
+   
+   
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1});
+   #10; // Make sure 0000 is read back from ALU_Left
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1})
+
+
+
+//------------------------------------end of status R/W--------------------------------------------------   
+   //$display("error state version reg ------end------\n\n\n\n");
+
 
 
 
