@@ -872,7 +872,7 @@ begin
    // Read back 7'h10 - should still be AAAA
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    #10;
-   `CHECK_VAL(16'hAAAA)
+  `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER}) 
 
    // Alias address 7'h50 read with chip_select=0 - should not be driven
    `CHIP_RESET
