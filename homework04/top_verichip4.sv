@@ -673,6 +673,35 @@ begin
    `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
  $display("\n\n\n ===================byte enables 01 test end==================\n\n\n"); 
 
+ $display("\n\n\n ===================byte enables 10 test start==================\n\n\n");
+   `CHIP_RESET
+   `CLEAR_ALL
+   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   //Attempt to write 0000 to ALU Left when byte enable is 00
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b10, 1'b1)
+   #10;//Attempt to read 0000 from ALU left
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;// Make sure 0000 is read back from ALU left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   // Similarly, apply this method for other test inputs within the same combination.
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b10 ,1'b1)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b10,1'b1)
+    
+ #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+ $display("\n\n\n ===================byte enables 10 test end==================\n\n\n"); 
+
 
 
 
