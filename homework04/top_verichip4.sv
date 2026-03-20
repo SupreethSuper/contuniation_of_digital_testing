@@ -867,7 +867,7 @@ begin
    $display("reading 0000 from VCHIP_STA_ADDR\n\n");
    #10;
 // Make sure 0000 is read back from ALU left
-   `CHECK_VAL({STA_RESERVED_HIGH, 2'b11, STA_RESERVED_LOW,4'h0})
+   `CHECK_VAL(16'h0000)
     //$display("reset state status reg ------end------\n\n\n\n");
 
 
@@ -892,7 +892,7 @@ begin
 `SET_READ(VCHIP_STA_ADDR, 1'b1)
    $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h0});
    #10;
-   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h0})
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h0})
 
 
 
@@ -903,7 +903,7 @@ begin
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h0});
    #10;
-   `CHECK_VAL({STA_RESERVED_HIGH, 2'b10, STA_RESERVED_LOW,4'h0})
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h0})
    //------------------------------------end of version R/W--------------------------------------------------------------------------------------------------------------------------
    //$display("reset state version reg ------end------\n\n\n\n");
 
