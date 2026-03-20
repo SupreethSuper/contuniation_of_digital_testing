@@ -817,10 +817,13 @@ begin
    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
    //Attempt to write AAAA to 7'h50 address
    `SET_WRITE(7'h50, 16'hAAAA, 2'b11, 1'b1)
+   $display("writing AAAA to 7'h50");
    #10;//Attempt to write FFFF from ALU left
    `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   $display("writing FFFF to VCHIP_VER_ADDR");
    #10;//Attempt to read AAAA from 7'h50
    `SET_READ(7'h50, 1'b1)
+   $display("reading AAAA from 7'h50");
    #10;// Make sure 0000 is read back from 7'h50 (unused address returns 0)
    `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
 
@@ -830,10 +833,13 @@ begin
    maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
   //Attempt to write AAAA to ALU_Left
   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
+  $display("writing AAAA to VCHIP_VER_ADDR");
    #10; //Attempt to write 5555 to 7'h50 address
    `SET_WRITE(7'h50, 16'h5555, 2'b11, 1'b1)
+   $display("writing 5555 to 7'h50");
    #10; //Attempt to read AAAA from ALU_Left
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   $display("reading AAAA from VCHIP_VER_ADDR");
    #10;// Make sure 0000 is read back from ALU left (write to unused address may clear register)
    `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
   
