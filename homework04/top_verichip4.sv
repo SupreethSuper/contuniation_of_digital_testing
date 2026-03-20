@@ -841,7 +841,7 @@ begin
    `SET_READ(VCHIP_VER_ADDR, 1'b1)
    $display("reading AAAA from VCHIP_VER_ADDR");
    #10;// Make sure 0000 is read back from ALU left (write to unused address may clear register)
-   `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})   // corrected from 16'hAAAA
   
 
 
