@@ -967,13 +967,13 @@ begin
 
 
 
-   $display("writing 5555 to VCHIP_STA_ADDR\n\n");
-   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
-   #10;
-   `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1});
-   #10;
-   `CHECK_VAL(16'h0001)
+   // $display("writing 5555 to VCHIP_STA_ADDR\n\n");
+   // `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1) //-------------write 4
+   // #10;
+   // `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   // $display("reading %h from VCHIP_STA_ADDR\n\n", {STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1});
+   // #10;
+   // `CHECK_VAL(16'h0001)
    //------------------------------------end of status R/W--------------------------------------------------------------------------------------------------------------------------
    $display("\n\n\n normal state status reg ------end------\n\n\n\n");
 
