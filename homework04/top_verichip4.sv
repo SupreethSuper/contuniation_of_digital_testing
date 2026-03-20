@@ -765,9 +765,50 @@ begin
    #10;
    `CHECK_VAL(16'h00_00)
 
-  $display("\n\n\nxxxxxxxxxxxxxxxxxxxxxx end of access with chip select = 1 xxxxxxxxxxxxxxxxxxxxxx"); 
+  $display("\n\n\nxxxxxxxxxxxxxxxxxxxxxx end of access with chip select = 1 xxxxxxxxxxxxxxxxxxxxxx\n\n\n"); 
 
 
+
+
+
+   $display("\n\n\n==================access check with chip select = 0=======================\n\n\n");
+
+ //Check for Aliasing without Chip Select
+   // Clear all for a spotless interface
+   `CLEAR_ALL
+   //Attempt to write AAAA to ALU_Left when chip select is off
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b0)
+   #10; //Attempt to read AAAA from ALU_Left
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;// Make sure FFFF is read back from ALU_Left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   // Similarly, apply this method for other test inputs within the same combination.
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   //Attempt to write 5555 to ALU Left when chip select is on
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;//Attempt to read 5555 from ALU left
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;// Make sure 5555 is read back from ALU left
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `SET_WRITE(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_VER_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+
+
+
+
+  $display("\n\n\nxxxxxxxxxxxxxxxxxxxxxx end of access with chip select = 0 xxxxxxxxxxxxxxxxxxxxxx\n\n\n"); 
 
 
    #5 $finish;
