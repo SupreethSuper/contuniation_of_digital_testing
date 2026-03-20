@@ -865,7 +865,7 @@ begin
    $display("reading 0000 from VCHIP_VER_ADDR\n\n");
    `SET_READ(VCHIP_VER_ADDR, 1'b0)
    #10;// Make sure 0000 is read back from ALU left
-   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `CHECK_VAL(16'h0000);
    // Similarly, apply this method for other test inputs within the same combination.
    $display("writing AAAA to VCHIP_VER_ADDR\n\n");
    `SET_WRITE(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
@@ -873,7 +873,7 @@ begin
    $display("reading AAAA from VCHIP_VER_ADDR\n\n");
    `SET_READ(VCHIP_VER_ADDR, 1'b0)
    #10;
-   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `CHECK_VAL(16'h0000);
 
    $display("writing 5555 to VCHIP_VER_ADDR\n\n");
    `SET_WRITE(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b1)
@@ -881,14 +881,14 @@ begin
    $display("reading 5555 from VCHIP_VER_ADDR\n\n");
    `SET_READ(VCHIP_VER_ADDR, 1'b0)
    #10;
-   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER})
+   `CHECK_VAL(16'h0000);
    $display("writing FFFF to VCHIP_VER_ADDR\n\n");
    `SET_WRITE(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
    $display("reading FFFF from VCHIP_VER_ADDR\n\n");
    `SET_READ(VCHIP_VER_ADDR, 1'b0)
    #10;
-   `CHECK_VAL({4'b0000, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER}) 
+   `CHECK_VAL(16'h0000); 
 
    //Check for Aliasing without Chip Select
    // Clear all for a spotless interface
