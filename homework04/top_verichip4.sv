@@ -1044,6 +1044,9 @@ begin
    `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h8000, 2'b11, 1'B1)
    $display("wrote 0x8000 to ALU left IP for borrow overflow\n\n");
    #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
+   $display("wrote 0x0001 to ALU right IP for borrow overflow\n\n");
+   #10;
    //forces a borrow aka overflow
    `SET_WRITE(VCHIP_CMD_ADDR, {1'b1, COMMAND_RSVD, 4'h2}, 2'b11, 1'b1); 
    $display("wrote 2 to command reg to trigger overflow\n\n");
