@@ -1138,6 +1138,7 @@ begin
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
+   $$display("end of sta");
 
 
 
