@@ -1072,7 +1072,7 @@ begin
 
 
 //===========exporty violations state=================================
- 
+
    // Test Status Register in Export Violation State
    `CLEAR_ALL
    `CHIP_RESET
@@ -1086,6 +1086,7 @@ begin
    // Issue restricted command (cmd=0xA > LAST_EXP_CMD=2) => triggers Export Violation
    // NOTE: design zeroes int2_en on next_state==EXP same posedge INT2 tries to set,
    //       so INT2 never latches. Expected status = 16'h0008 (INT2=0, state=EXP=4'h8)
+  
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
    #10;
    // Writes to Status are ignored in EXP state; reads still work
@@ -1094,25 +1095,25 @@ begin
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h8})
- 
+
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h8})
- 
+
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h8})
- 
+
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h8})
- 
+
    // Test Byte Enable Combinations on Status Register (Normal state, status is read-only)
    `CLEAR_ALL
    `CHIP_RESET
@@ -1140,6 +1141,7 @@ begin
    #10;
    `CHECK_VAL(16'h0001)
    $display("end of sta");
+
 
 
 
