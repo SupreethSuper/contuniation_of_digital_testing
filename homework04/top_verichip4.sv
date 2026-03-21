@@ -1072,64 +1072,63 @@ begin
 
 
 //===========exporty violations state=================================
-
-
- // Test ALU Left Register in Export Violation State (Write and Read) keeping byte enable and chip select on
-   `CHIP_RESET
+ 
+   // Test Status Register in Export Violation State
    `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1; // transition to Normal state
+   #10; // wait for Normal state
+   export_disable <= 1'b1; // enable export restriction
+   #10; // wait for export_disable to register
+   // Write CON with INT2_EN=1 so INT2 fires when export violation occurs
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
    #10;
-
-   export_disable <= 1'b1; //This signal disables certain export-required commands. Invalid commands will transition the state machine to the Export Violation state.
-   //Attempt to write 0200 to Configuration register
-   `SET_WRITE(VCHIP_CON_ADDR,16'h0200,2'b11,1'b1)
-   #10;//Attempt to write 800A to command register - To transition from Normal state to Export violation state
-   `SET_WRITE(VCHIP_CMD_ADDR,16'h800A,2'b11,1'b1)
-   #10;//Attempt to write 0000 to ALU_Left
+   // Issue restricted command (SHL=6 > LAST_EXP_CMD=2) with valid=1 => triggers Export Violation
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10; // state now Export Violation; INT2=1; state=4'h8 => status=16'h0208
+   // Writes to Status are ignored in EXP state; reads still work
    `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
+   #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   #10; // Make sure 0000 is read back from ALU_Left
+   #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b10, STA_RESERVED_LOW, 4'h8})
-   // Similarly, apply this method for other test inputs within the same state.
+ 
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
-    `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b10, STA_RESERVED_LOW, 4'h8})
-
+ 
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b10, STA_RESERVED_LOW, 4'h8})
-
+ 
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
    #10;
-    `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b10, STA_RESERVED_LOW, 4'h8})
-
-
-   // Test Byte Enable Combinations with chip select on state
-   `CHIP_RESET
+ 
+   // Test Byte Enable Combinations on Status Register (Normal state, status is read-only)
    `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
-   //Attempt to write 0000 to ALU Left when byte enable is 00
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1; // transition to Normal state
+   #10; // wait for Normal state; status = 16'h0001
+   // byte_en=00: no bytes written to Status; still reads 16'h0001
    `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b00, 1'b1)
-   #10;//Attempt to read 0000 from ALU left
-   `SET_READ(VCHIP_STA_ADDR, 1'b1)
-   #10;// Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0001)
-   // Similarly, apply this method for other test inputs within the same combination.
-   `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b00 ,1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
-   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b00,1'b1)
-    
- #10;
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b00, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0001)
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b00, 1'b1)
+   #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
@@ -1138,8 +1137,7 @@ begin
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
-   $$display("end of sta");
-
+   $display("end of sta");
 
 
 
