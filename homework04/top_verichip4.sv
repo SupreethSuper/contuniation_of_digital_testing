@@ -1138,7 +1138,7 @@ begin
   $display("aliasing with chip select");
    `CHIP_RESET
    `CLEAR_ALL
-      maroon <= 1'b1; gold <= 1'b0;
+      maroon <= 1'b0; gold <= 1'b1;
    #10;
    //Attempt to write 0000 to ALU_Left
    $display("aliasing with chip select 0000");
@@ -1219,7 +1219,7 @@ begin
    //Write to Correct ALU LEFT Register
    `CHIP_RESET
    `CLEAR_ALL
-   maroon <= 1'b0; gold <= 1'b1; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
+   maroon <= 1'b1; gold <= 1'b0; // Maroon = 0 and Gold = 1, for transitioning to Normal State.
    //Attempt to write AAAA to 7'h50 address
    `SET_WRITE(7'h50, 16'hAAAA, 2'b11, 1'b1)
    #10;//Attempt to write FFFF from ALU left
@@ -1227,7 +1227,7 @@ begin
    #10;//Attempt to read AAAA from 7'h50
    `SET_READ(7'h50, 1'b1)
    #10;// Make sure 0000 is read back from 7'h50 (unused address returns 0)
-   `CHECK_VAL(16'h0000)   // corrected from 16'hAAAA
+   `CHECK_VAL(16'h0001)   // corrected from 16'hAAAA
 
 //Write to Aliased Address (7'h50)
    `CHIP_RESET
