@@ -1041,6 +1041,9 @@ begin
    `SET_WRITE(VCHIP_CMD_ADDR, {1'b1, COMMAND_RSVD, 4'h7}, 2'b11, 1'b1);
    $display("wrote 7 to command reg to clear ALU OUTPUT\n\n");
    #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h8000, 2'b11, 1'B1)
+   $display("wrote 0x8000 to ALU left IP for borrow overflow\n\n");
+   #10;
    //forces a borrow aka overflow
    `SET_WRITE(VCHIP_CMD_ADDR, {1'b1, COMMAND_RSVD, 4'h2}, 2'b11, 1'b1); 
    $display("wrote 2 to command reg to trigger overflow\n\n");
@@ -1050,7 +1053,7 @@ begin
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1});
    #10;
-   `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b01, 1'b1);
+   `SET_WRITE(VCHIP_STA_ADDR, {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1}, 2'b11, 1'b1);
    $display("cleared overflow bit from status reg\n\n");
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1);
