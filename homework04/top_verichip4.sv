@@ -1052,7 +1052,7 @@ begin
    `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1);
    $display("Enable interrupt 1\n\n");
    #10;
-   
+
 
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1); 
    $display("wrote 0x8008 to command reg to trigger bad command\n\n");
@@ -1062,13 +1062,13 @@ begin
    #10;
    `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1});
    #10;
-   `SET_WRITE(VCHIP_STA_ADDR, {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1}, 2'b11, 1'b1);
+   `SET_WRITE(VCHIP_STA_ADDR, {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2}, 2'b11, 1'b1);
    $display("cleared overflow bit from status reg\n\n");
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1);
    $display("reading overflow bit from status reg\n\n");
    #10;
-   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h1})
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW,4'h2})
 
 
 
