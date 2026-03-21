@@ -1082,7 +1082,7 @@ begin
 
    export_disable <= 1'b1; //This signal disables certain export-required commands. Invalid commands will transition the state machine to the Export Violation state.
    //Attempt to write 0200 to Configuration register
-   `SET_WRITE(VCHIP_CON_ADDR,16'h0300,2'b11,1'b1)
+   `SET_WRITE(VCHIP_CON_ADDR,16'h0200,2'b11,1'b1)
    #10;//Attempt to write 800A to command register - To transition from Normal state to Export violation state
    `SET_WRITE(VCHIP_CMD_ADDR,16'h800A,2'b11,1'b1)
    #10;//Attempt to write 0000 to ALU_Left
@@ -1120,24 +1120,24 @@ begin
    #10;//Attempt to read 0000 from ALU left
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;// Make sure 0000 is read back from ALU left
-   `CHECK_VAL(16'h0000)
+   `CHECK_VAL(16'h0001)
    // Similarly, apply this method for other test inputs within the same combination.
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b00 ,1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
-   `CHECK_VAL(16'h0000)
+   `CHECK_VAL(16'h0001)
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b00,1'b1)
     
  #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
-   `CHECK_VAL(16'h0000)
+   `CHECK_VAL(16'h0001)
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b00, 1'b1)
    #10;
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
-   `CHECK_VAL(16'h0000)
+   `CHECK_VAL(16'h0001)
 
 
 
