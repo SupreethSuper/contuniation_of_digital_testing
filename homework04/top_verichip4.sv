@@ -1249,6 +1249,843 @@ begin
 
 
 
+
+//===========================================================================
+// STATUS REGISTER - INT1 tests (cause interrupt, verify, clear)
+//===========================================================================
+
+   // STATUS INT1 - cause via bad_cmd in Normal, verify INT1=1, clear it
+   // Covers: status int1 write/read bits (trigger=write, clear=write to STA)
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // Enable INT1
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   // Trigger bad command -> INT1 fires, state->Error
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   // Read status: INT1=1(bit8), state=ERR(4'h2) => 16'h0102
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW, 4'h2})
+   // Write to STA with bit8=1 to clear INT1 (byte_en[1] required)
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 cause/clear with 0000 pattern
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 cause/clear with FFFF pattern
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 cause/clear with AAAA pattern
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 cause/clear with 5555 pattern
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 - Error state: reads enabled, writes ignored
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   // Now in Error state with INT1=1. Write to STA clears INT1 even in Error.
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h2})
+
+   // INT1 - Export violation state: only STA readable, INT1=0 (int1_en cleared on EXP transition)
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   export_disable <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b00, STA_RESERVED_LOW, 4'h8})
+
+//===========================================================================
+// COMMAND REGISTER - write/read/bytes/access
+// cmd_reg = { valid[15], 11'h0, cmd[3:0] }
+// Write: chip_select=1, rw_=0, addr=7'h08, byte_en=11
+// Read:  chip_select=1, rw_=1, addr=7'h08
+// In Normal state: valid latches. In Error/EXP: valid forced to 0.
+//===========================================================================
+
+   // CMD - Reset state write/read (4 values)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // CMD - Normal state write/read (4 values)
+   // valid=1 only when byte_en[1]=1 AND bit15=1; cmd latches [3:0] when byte_en[0]=1
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h8001)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8002, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h8002)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h8007)
+
+   // CMD - Error state: valid forced 0, reads still return cmd_reg
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   // Now in Error state. Write is ignored (state==ERR forces valid=0)
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // CMD - Export Violation state: valid forced 0
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   export_disable <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // CMD - byte enables
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=01: only byte[0] written, cmd=[3:0] latched but valid=0 (bit15 in byte[1])
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b01, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0007)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=10: only byte[1] written, valid=1 but cmd stays 0
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h8000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=00: nothing written
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b00, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=11: both bytes written
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8003, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h8003)
+
+   // CMD - chip select access
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   // read with cs=0 -> 0
+   `SET_READ(VCHIP_CMD_ADDR, 1'b0)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // write with cs=0 -> ignored
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h5555, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CMD_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+//===========================================================================
+// CONFIGURATION REGISTER - write/read/bytes/access
+// con_reg = { 6'h0, int2_en[9], int1_en[8], 8'h0 }
+// Write: addr=7'h0C, byte_en[1] required to set int2_en/int1_en
+//===========================================================================
+
+   // CON - Reset state write/read
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0300)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0200)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0100)
+
+   // CON - Normal state write/read
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0300)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0200)
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0100)
+
+   // CON - Error state: retained (not cleared)
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   // In Error: CON retained, writes ignored
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0300)
+
+   // CON - Export Violation: int2_en/int1_en cleared
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   export_disable <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // CON - byte enables
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=00: nothing written
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b00, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=01: only byte[0] written, int2_en/int1_en in byte[1] -> not written
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b01, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=10: byte[1] written -> int2_en/int1_en latched
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0300)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   // byte_en=11: both bytes written
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0300)
+
+   // CON - chip select access
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b0)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'hAAAA, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h5555, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_CON_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+//===========================================================================
+// ALU RIGHT REGISTER - write/read/bytes/access
+// Same behavior as ALU LEFT: 16-bit R/W, byte enables, states
+//===========================================================================
+
+   // ALU RIGHT - Reset state write/read
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hFFFF)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hAAAA)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h5555)
+
+   // ALU RIGHT - Normal state write/read
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hFFFF)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hAAAA)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h5555)
+
+   // ALU RIGHT - Error state: reads allowed, writes ignored
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h1234, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h1234)
+
+   // ALU RIGHT - Export state: cleared to 0
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   export_disable <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // ALU RIGHT - byte enables
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b00, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b00, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b01, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h00FF)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b10, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hFF00)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'hFFFF)
+
+   // ALU RIGHT - chip select access
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b0)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_RIGHT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+//===========================================================================
+// ALU OUT REGISTER - read-only (result of ALU operation)
+// alu_out resets to 0, updates via ALU commands in Normal state
+// Reads: addr=7'h18, cs=1
+// alu_out tests: read in all 4 states, byte enables on read (read ignores byte_en)
+//===========================================================================
+
+   // ALU OUT - Reset state: reads 0
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // ALU OUT - Normal state: trigger ADD, read result
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0002, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0005)
+
+   // ALU OUT - Normal: SUB
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0010, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8002, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h000D)
+
+   // ALU OUT - Normal: SHL
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0001, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8006, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0008)
+
+   // ALU OUT - Normal: SHR
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0080, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0010)
+
+   // ALU OUT - Error state: alu_out retained
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0002, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   // Trigger error (bad cmd)
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0005)
+
+   // ALU OUT - Export state: alu_out cleared to 0
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   export_disable <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0002, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   // ALU OUT - chip select access
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0003, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0002, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b0)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
+   `CLEAR_ALL
+   `CHIP_RESET
+   maroon <= 1'b0; gold <= 1'b1;
+   #10;
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   #10;
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b0)
+   #10;
+   `SET_READ(VCHIP_ALU_OUT_ADDR, 1'b1)
+   #10;
+   `CHECK_VAL(16'h0000)
+
    #5 $finish;
 end // initial begin
 
