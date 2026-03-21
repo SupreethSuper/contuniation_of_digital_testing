@@ -1060,7 +1060,7 @@ begin
    `SET_READ(VCHIP_STA_ADDR, 1'b1);
    $display("reading overflow bit from status reg\n\n");
    #10;
-   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h1});
+   `CHECK_VAL({STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2});
    #10;
    `SET_WRITE(VCHIP_STA_ADDR, {STA_RESERVED_HIGH, 2'b01, STA_RESERVED_LOW,4'h2}, 2'b11, 1'b1);
    $display("cleared overflow bit from status reg\n\n");
