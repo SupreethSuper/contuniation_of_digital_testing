@@ -1135,30 +1135,39 @@ begin
 
 // Test Aliasing on different operations
   //Check for Aliasing with Chip Select
+  $display("aliasing with chip select");
    `CHIP_RESET
    `CLEAR_ALL
       maroon <= 1'b1; gold <= 1'b0;
    #10;
    //Attempt to write 0000 to ALU_Left
+   $display("aliasing with chip select 0000");
    `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
    #10;//Attempt to read 0000 from ALU_Left
+   $display("reading - aliasing with chip select 0000");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;// Make sure 0000 is read back from ALU left
    `CHECK_VAL(16'h0001)
    // Similarly, apply this method for other test inputs within the same combination.
+   $display("aliasing with chip select AAAA");
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
    #10;
+   $display("reading - aliasing with chip select AAAA");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
    `CHECK_VAL(16'h0001)
 
+   $display("aliasing with chip select 5555");
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
    #10;
+   $display("reading - aliasing with chip select 5555");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
    `CHECK_VAL(16'h0001)
+   $display("aliasing with chip select FFFF");
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
+   $display("reading - aliasing with chip select FFFF");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
    `CHECK_VAL(16'h0001)
@@ -1169,31 +1178,41 @@ begin
    maroon <= 1'b1; gold <= 1'b0;
    #10;
    //Attempt to write AAAA to ALU_Left when chip select is off
+   $display("aliasing without chip select AAAA");
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b0)
    #10; //Attempt to read AAAA from ALU_Left
+   $display("reading - aliasing without chip select AAAA");
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;// Make sure FFFF is read back from ALU_Left
    `CHECK_VAL(16'h0001)
    // Similarly, apply this method for other test inputs within the same combination.
+   $display("aliasing without chip select 5555");
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b0)
    #10;
+   $display("reading - aliasing without chip select 5555");
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
+   $display("aliasing without chip select FFFF");
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b0)
    #10;
+   $display("reading - aliasing without chip select FFFF");
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
    //Attempt to write 5555 to ALU Left when chip select is on
+   $display("aliasing with chip select 5555");
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
    #10;//Attempt to read 5555 from ALU left
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   $display("reading - aliasing with chip select 5555");
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;// Make sure 5555 is read back from ALU left
    `CHECK_VAL(16'h0001)
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b0)
+   $display("aliasing without chip select 0000");
+   `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b0)
    #10;
-   `SET_READ(VCHIP_ALU_LEFT_ADDR, 1'b1)
+   $display("reading - aliasing without chip select 0000");
+   `SET_READ(VCHIP_STA_ADDR, 1'b1)
    #10;
    `CHECK_VAL(16'h0001)
 
