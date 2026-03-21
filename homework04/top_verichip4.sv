@@ -1048,6 +1048,12 @@ begin
    // $display("wrote 0x0001 to ALU right IP for borrow overflow\n\n");
    // #10;
    // //forces a borrow aka overflow
+
+   `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1);
+   $display("Enable interrupt 1\n\n");
+   #10;
+   
+
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1); 
    $display("wrote 0x8008 to command reg to trigger bad command\n\n");
    #10;
