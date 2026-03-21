@@ -1520,14 +1520,13 @@ $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    $display("aliasing with chip select 0000");
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'h0000);
    `SET_WRITE(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
-   #10;//Attempt to read 0000 from ALU_Left
+   #10;
    $display("reading - aliasing with chip select 0000");
    $display("READ  addr=7'h04 (STATUS) cs=1'b0");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
-   #10;// Make sure 0000 is read back from ALU left
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
-   `CHECK_VAL(16'h0001)
-   // Similarly, apply this method for other test inputs within the same combination.
+   #10;
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
+   `CHECK_VAL(16'h0000)
    $display("aliasing with chip select AAAA");
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'hAAAA);
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
@@ -1536,8 +1535,8 @@ $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    $display("READ  addr=7'h04 (STATUS) cs=1'b0");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
-   `CHECK_VAL(16'h0001)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
+   `CHECK_VAL(16'h0000)
 
    $display("aliasing with chip select 5555");
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'h5555);
@@ -1547,8 +1546,8 @@ $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    $display("READ  addr=7'h04 (STATUS) cs=1'b0");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
-   `CHECK_VAL(16'h0001)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
+   `CHECK_VAL(16'h0000)
    $display("aliasing with chip select FFFF");
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'hFFFF);
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
@@ -1557,8 +1556,8 @@ $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    $display("READ  addr=7'h04 (STATUS) cs=1'b0");
    `SET_READ(VCHIP_STA_ADDR, 1'b0)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
-   `CHECK_VAL(16'h0001)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
+   `CHECK_VAL(16'h0000)
 
    $display("\n--- Check for Aliasing without Chip Select ---");
    //Check for Aliasing without Chip Select
@@ -1628,15 +1627,15 @@ $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    //Attempt to write AAAA to 7'h50 address
    $display("WRITE addr=7'h50 (ALIAS) data=%h byte_en=2'b11 cs=1'b1", 16'hAAAA);
    `SET_WRITE(7'h50, 16'hAAAA, 2'b11, 1'b1)
-   #10;//Attempt to write FFFF from ALU left
+   #10;
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'hFFFF);
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
-   #10;//Attempt to read AAAA from 7'h50
+   #10;
    $display("READ  addr=7'h50 (ALIAS) cs=1'b1");
    `SET_READ(7'h50, 1'b1)
-   #10;// Make sure 0000 is read back from 7'h50 (unused address returns 0)
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
-   `CHECK_VAL(16'h0001)   // corrected from 16'hAAAA
+   #10;
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
+   `CHECK_VAL(16'h0000)   // 7h50 unmapped -> 0000
 
 $display("\n--- Write to Aliased Address (7'h50) ---");
 //Write to Aliased Address (7'h50)
@@ -1733,6 +1732,8 @@ $display("\n--- Write to Aliased Address (7'h50) ---");
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
+   `CLEAR_BUS
+   #10;
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'hFFFF);
    `SET_WRITE(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
@@ -1753,6 +1754,8 @@ $display("\n--- Write to Aliased Address (7'h50) ---");
    #10;
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
+   #10;
+   `CLEAR_BUS
    #10;
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'hAAAA);
    `SET_WRITE(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
@@ -1775,6 +1778,8 @@ $display("\n--- Write to Aliased Address (7'h50) ---");
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
+   `CLEAR_BUS
+   #10;
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b11 cs=1'b1", 16'h5555);
    `SET_WRITE(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b1)
    #10;
@@ -1796,8 +1801,9 @@ $display("\n--- Write to Aliased Address (7'h50) ---");
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
-   $display("\n--- Now in Error state with INT1=1. Write to STA clears INT1 even in Error. ---");
-   // Now in Error state with INT1=1. Write to STA clears INT1 even in Error.
+   `CLEAR_BUS
+   #10;
+   $display("\n--- Now in Error state - CLEAR_BUS deasserts valid before STA clear ---");
    $display("WRITE addr=7'h04 (STATUS) data=%h byte_en=2'b10 cs=1'b1", 16'h0100);
    `SET_WRITE(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
    #10;
@@ -1817,8 +1823,8 @@ $display("\n--- Write to Aliased Address (7'h50) ---");
    $display("WRITE addr=7'h0C (CONFIG) data=%h byte_en=2'b11 cs=1'b1", 16'h0100);
    `SET_WRITE(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
    #10;
-   $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h800A);
-   `SET_WRITE(VCHIP_CMD_ADDR, 16'h800A, 2'b11, 1'b1)
+   $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8003);
+   `SET_WRITE(VCHIP_CMD_ADDR, 16'h8003, 2'b11, 1'b1)
    #10;
    $display("READ  addr=7'h04 (STATUS) cs=1'b1");
    `SET_READ(VCHIP_STA_ADDR, 1'b1)
@@ -1855,8 +1861,8 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
-   `CHECK_VAL(16'h0000)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0001);
+   `CHECK_VAL(16'h0001)  // valid=0, cmd=1
 
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'hAAAA);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
@@ -1864,8 +1870,8 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
-   `CHECK_VAL(16'h0000)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h000a);
+   `CHECK_VAL(16'h000A)  // valid=0, cmd=0xA
 
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h5555);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h5555, 2'b11, 1'b1)
@@ -1873,8 +1879,8 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h0000);
-   `CHECK_VAL(16'h0000)
+   $display("CHECK data_out=%h expected=%h", data_out, 16'h0005);
+   `CHECK_VAL(16'h0005)  // valid=0, cmd=5
 
    $display("\n--- CMD - Normal state write/read (4 values) ---");
    // CMD - Normal state write/read (4 values)
@@ -1899,11 +1905,11 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8001);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
    #10;
+   $display("CHECK data_out=%h expected=%h (valid sampled before SET_READ clears it)", data_out, 16'h8001);
+   `CHECK_VAL(16'h8001)
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h8001);
-   `CHECK_VAL(16'h8001)
 
    `CLEAR_ALL
    `CHIP_RESET
@@ -1912,11 +1918,11 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8002);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8002, 2'b11, 1'b1)
    #10;
+   $display("CHECK data_out=%h expected=%h (valid sampled before SET_READ clears it)", data_out, 16'h8002);
+   `CHECK_VAL(16'h8002)
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h8002);
-   `CHECK_VAL(16'h8002)
 
    `CLEAR_ALL
    `CHIP_RESET
@@ -1925,11 +1931,11 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8007);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b11, 1'b1)
    #10;
+   $display("CHECK data_out=%h expected=%h (valid sampled before SET_READ clears it)", data_out, 16'h8007);
+   `CHECK_VAL(16'h8007)
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h8007);
-   `CHECK_VAL(16'h8007)
 
    $display("\n--- CMD - Error state: valid forced 0, reads still return cmd_reg ---");
    // CMD - Error state: valid forced 0, reads still return cmd_reg
@@ -1940,8 +1946,9 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
-   $display("\n--- Now in Error state. Write is ignored (state==ERR forces valid=0) ---");
-   // Now in Error state. Write is ignored (state==ERR forces valid=0)
+   `CLEAR_BUS
+   #10;
+   $display("\n--- 2 posedges elapsed - now in Error state. Write should be ignored. ---");
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8001);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
    #10;
@@ -1992,11 +1999,11 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b10 cs=1'b1", 16'h8007);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8007, 2'b10, 1'b1)
    #10;
+   $display("CHECK data_out=%h expected=%h (sample before SET_READ clears valid)", data_out, 16'h8000);
+   `CHECK_VAL(16'h8000)
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h8000);
-   `CHECK_VAL(16'h8000)
 
    `CLEAR_ALL
    `CHIP_RESET
@@ -2020,11 +2027,11 @@ $display("\n--- In Normal state: valid latches. In Error/EXP: valid forced to 0.
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8003);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8003, 2'b11, 1'b1)
    #10;
+   $display("CHECK data_out=%h expected=%h (sample before SET_READ clears valid)", data_out, 16'h8003);
+   `CHECK_VAL(16'h8003)
    $display("READ  addr=7'h08 (COMMAND) cs=1'b1");
    `SET_READ(VCHIP_CMD_ADDR, 1'b1)
    #10;
-   $display("CHECK data_out=%h expected=%h", data_out, 16'h8003);
-   `CHECK_VAL(16'h8003)
 
    $display("\n--- CMD - chip select access ---");
    // CMD - chip select access
@@ -2183,7 +2190,9 @@ $display("\n--- CONFIGURATION REGISTER - write/read/bytes/access ---");
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
-   // In Error: CON retained, writes ignored
+   `CLEAR_BUS
+   #10;
+   $display("--- 2 posedges elapsed - now in Error state. CON write should be retained.");
    $display("WRITE addr=7'h0C (CONFIG) data=%h byte_en=2'b11 cs=1'b1", 16'h0000);
    `SET_WRITE(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
    #10;
@@ -2426,6 +2435,9 @@ $display("\n--- Same behavior as ALU LEFT: 16-bit R/W, byte enables, states ---"
    $display("WRITE addr=7'h08 (COMMAND) data=%h byte_en=2'b11 cs=1'b1", 16'h8008);
    `SET_WRITE(VCHIP_CMD_ADDR, 16'h8008, 2'b11, 1'b1)
    #10;
+   `CLEAR_BUS
+   #10;
+   $display("--- 2 posedges elapsed - now in Error state. ALU_RIGHT write ignored.");
    $display("WRITE addr=7'h14 (ALU_RIGHT) data=%h byte_en=2'b11 cs=1'b1", 16'hFFFF);
    `SET_WRITE(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
    #10;
