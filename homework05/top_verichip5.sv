@@ -3372,11 +3372,46 @@ alu_write(16'h1111, 16'h1111, 16'h8002);
    `CLEAR_BUS
 
 
+//-----------------start of hw5-------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
    #5 $finish;
 end // initial begin
 
 
-verichip4 verichip4 (.clk           ( clk            ),    // system clock
+verichip5 verichip5 (.clk           ( clk            ),    // system clock
                    .rst_b         ( rst_b          ),    // chip reset
                    .export_disable( export_disable ),    // disable features
                    .interrupt_1   ( interrupt_1    ),    // first interrupt
@@ -3396,7 +3431,7 @@ verichip4 verichip4 (.clk           ( clk            ),    // system clock
 initial 
 begin
     $dumpfile("verichip.vcd");
-    $dumpvars(0,top_verichip4);
+    $dumpvars(0,top_verichip5);
 end
 
 endmodule
