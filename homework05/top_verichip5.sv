@@ -27,6 +27,20 @@
    gold           <= 1'b0;          \
    `CLEAR_BUS
 
+
+`define STATE_RESET_TO_NORMAL               \
+   maroon <= 1'b0;                           \
+   gold <= 1'b0;
+
+
+`define STATE_ERROR_TO_MAROON               \
+   maroon <= 1'b1;                           \
+   gold <= 1'b0;
+
+
+   
+
+
 `define CHECK_VAL(val)              \
    if ( data_out != val )           \
        $display("bad read, got %h but expected %h at %t",data_out,val,$time());
@@ -41,7 +55,11 @@
    wait( clk == 1'b1 );             \
    rst_b <= 1'b1;
 
-module top_verichip4 ();
+
+`define STATE_RESET                        \
+         `CHIP_RESET
+
+module top_verichip5 ();
 
 logic clk;                       // system clock
 logic rst_b;                     // chip reset
@@ -80,6 +98,7 @@ localparam VCHIP_ALU_SHR   = 16'h0007;
 localparam ONE = 1'b1;
 localparam ZERO = 1'b0;
 
+initial begin
 
 
 //-----------------start of hw5-------------------------------------------
