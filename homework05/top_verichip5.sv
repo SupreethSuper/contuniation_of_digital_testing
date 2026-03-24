@@ -65,25 +65,25 @@
 
 
 `define STATE_TESTER (val)                               \
-`WRITE_REG(VCHIP_ALU_LEFT_ADDR,16'h0001,2'b11,1'b1);     \
+`WRITE_REG(7'h10,16'h0001,2'b11,1'b1);     \
    `WAIT_TIME                                           \
-   `READ_REG(VCHIP_ALU_LEFT_ADDR,1'b1);                 \
+   `READ_REG(7'h10,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0001)                                 \
    `WAIT_TIME                                           \
    
    //write to alu right and read from alu right
-   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR,16'h0002,2'b11,1'b1); \
+   `WRITE_REG(7'h14,16'h0002,2'b11,1'b1); \
    `WAIT_TIME                                           \
-   `READ_REG(VCHIP_ALU_RIGHT_ADDR,1'b1);                 \
+   `READ_REG(7'h14,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0002)                                 \
    `WAIT_TIME                                           \
 
    //perform add operation
-   `WRITE_REG(VCHIP_CMD_ADDR, VCHIP_ALU_ADD,2'b11,1'b1); \
+   `WRITE_REG(7'h08,16'h0001,2'b11,1'b1); \
    `WAIT_TIME                                           \
-   `READ_REG(VCHIP_ALU_OUT_ADDR,1'b1);                 \
+   `READ_REG(7'h18,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(val) //confirms that we are in reset state \
    `WAIT_TIME                                           \
@@ -97,13 +97,13 @@
    `WAIT_TIME                                         \
    `STATE_RESET_TO_NORMAL                             \
    `WAIT_TIME                                         \
-   `SET_WRITE(VCHIP_CMD_ADDR,16'h8003,2'b11,1'b1)      \
+   `SET_WRITE(7'h08,16'h8003,2'b11,1'b1)      \
    `WAIT_TIME                                         \
    `CLEAR_BUS                                         \
    `WAIT_TIME                                         \
-   `SET_WRITE(VCHIP_ALU_LEFT_ADDR,16'hFFFF,2'b11,1'b1)\
+   `SET_WRITE(7'h10,16'hFFFF,2'b11,1'b1)\
    `CLEAR_BUS                                         \
-   `SET_READ(VCHIP_ALU_LEFT_ADDR,1'b1)                \
+   `SET_READ(7'h10,1'b1)                \
    `WAIT_TIME                                         \
    `WAIT_TIME                                         \
    `CHECK_VAL(16'h0000)                               \
@@ -185,7 +185,7 @@ initial begin
 //-------------------PUSH FOR INITIAL TEST -----------------------------------------------
 //==================CHNAGES TO BE MADE AFTER TEST 1=====================================
 
-
+//address in `defines added raw
 
 //============================XXXXXXXXXXXXX=================================================
    
