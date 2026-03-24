@@ -65,28 +65,28 @@
 
 
 `define STATE_TESTER (val)                               \
-`SET_WRITE(7'h10,16'h0001,2'b11,1'b1);     \
+`SET_WRITE(7'h10,16'h0001,2'b11,1'b1)                    \
    `WAIT_TIME                                           \
-   `SET_READ(7'h10,1'b1);                 \
+   `SET_READ(7'h10,1'b1)                                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0001)                                 \
-   `WAIT_TIME                                           \
+   `WAIT_TIME                                           
    
    //write to alu right and read from alu right
-   `SET_WRITE(7'h14,16'h0002,2'b11,1'b1); \
+   `SET_WRITE(7'h14,16'h0002,2'b11,1'b1)                 \
    `WAIT_TIME                                           \
-   `SET_READ(7'h14,1'b1);                 \
+   `SET_READ(7'h14,1'b1)                                  \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0002)                                 \
-   `WAIT_TIME                                           \
+   `WAIT_TIME                                           
 
    //perform add operation
-   `SET_WRITE(7'h08,16'h0001,2'b11,1'b1); \
+   `SET_WRITE(7'h08,16'h0001,2'b11,1'b1)                 \
    `WAIT_TIME                                           \
-   `SET_READ(7'h18,1'b1);                 \
+   `SET_READ(7'h18,1'b1)                                \
    `WAIT_TIME                                           \
-   `CHECK_VAL(val) //confirms that we are in reset state \
-   `WAIT_TIME                                           \
+   `CHECK_VAL(val)                                     \ //confirms that we are in reset state
+   `WAIT_TIME                                           
 
 
 
@@ -97,13 +97,13 @@
    `WAIT_TIME                                         \
    `STATE_RESET_TO_NORMAL                             \
    `WAIT_TIME                                         \
-   `SET_WRITE(7'h08,16'h8003,2'b11,1'b1)      \
+   `SET_WRITE(7'h08,16'h8003,2'b11,1'b1)              \
    `WAIT_TIME                                         \
    `CLEAR_BUS                                         \
    `WAIT_TIME                                         \
-   `SET_WRITE(7'h10,16'hFFFF,2'b11,1'b1)\
+   `SET_WRITE(7'h10,16'hFFFF,2'b11,1'b1)              \
    `CLEAR_BUS                                         \
-   `SET_READ(7'h10,1'b1)                \
+   `SET_READ(7'h10,1'b1)                               \
    `WAIT_TIME                                         \
    `WAIT_TIME                                         \
    `CHECK_VAL(16'h0000)                               \
