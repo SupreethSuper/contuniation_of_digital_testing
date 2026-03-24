@@ -65,25 +65,25 @@
 
 
 `define STATE_TESTER (val)                               \
-`WRITE_REG(7'h10,16'h0001,2'b11,1'b1);     \
+`SET_WRITE(7'h10,16'h0001,2'b11,1'b1);     \
    `WAIT_TIME                                           \
-   `READ_REG(7'h10,1'b1);                 \
+   `SET_READ(7'h10,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0001)                                 \
    `WAIT_TIME                                           \
    
    //write to alu right and read from alu right
-   `WRITE_REG(7'h14,16'h0002,2'b11,1'b1); \
+   `SET_WRITE(7'h14,16'h0002,2'b11,1'b1); \
    `WAIT_TIME                                           \
-   `READ_REG(7'h14,1'b1);                 \
+   `SET_READ(7'h14,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(16'h0002)                                 \
    `WAIT_TIME                                           \
 
    //perform add operation
-   `WRITE_REG(7'h08,16'h0001,2'b11,1'b1); \
+   `SET_WRITE(7'h08,16'h0001,2'b11,1'b1); \
    `WAIT_TIME                                           \
-   `READ_REG(7'h18,1'b1);                 \
+   `SET_READ(7'h18,1'b1);                 \
    `WAIT_TIME                                           \
    `CHECK_VAL(val) //confirms that we are in reset state \
    `WAIT_TIME                                           \
