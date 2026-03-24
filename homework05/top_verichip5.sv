@@ -33,7 +33,7 @@
    gold <= 1'b0;
 
 
-`define STATE_ERROR_TO_MAROON               \
+`define STATE_ERROR_TO_NORMAL               \
    maroon <= 1'b1;                           \
    gold <= 1'b0;
 
@@ -58,6 +58,57 @@
 
 `define STATE_RESET                        \
          `CHIP_RESET
+
+`define WAIT_TIME                                 \
+   #10;
+
+
+
+`define STATE_TESTER (val)                               \
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR,16'h0001,2'b11,1'b1);     \
+   `WAIT_TIME                                           \
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,1'b1);                 \
+   `WAIT_TIME                                           \
+   `CHECK_VAL(16'h0001)                                 \
+   `WAIT_TIME                                           \
+   
+   //write to alu right and read from alu right
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR,16'h0002,2'b11,1'b1); \
+   `WAIT_TIME                                           \
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,1'b1);                 \
+   `WAIT_TIME                                           \
+   `CHECK_VAL(16'h0002)                                 \
+   `WAIT_TIME                                           \
+
+   //perform add operation
+   `WRITE_REG(VCHIP_CMD_ADDR, VCHIP_ALU_ADD,2'b11,1'b1); \
+   `WAIT_TIME                                           \
+   `READ_REG(VCHIP_ALU_OUT_ADDR,1'b1);                 \
+   `WAIT_TIME                                           \
+   `CHECK_VAL(val) //confirms that we are in reset state \
+   `WAIT_TIME                                           \
+
+
+
+`define EXPORT_STATE                                  \
+   `CLEAR_ALL                                         \
+   `WAIT_TIME                                         \
+   `CHIP_RESET                                        \
+   `WAIT_TIME                                         \
+   `STATE_RESET_TO_NORMAL                             \
+   `WAIT_TIME                                         \
+   `SET_WRITE(VCHIP_CMD_ADDR,16'h8003,2'b11,1'b1)      \
+   `WAIT_TIME                                         \
+   `CLEAR_BUS                                         \
+   `WAIT_TIME                                         \
+   `SET_WRITE(VCHIP_ALU_LEFT_ADDR,16'hFFFF,2'b11,1'b1)\
+   `CLEAR_BUS                                         \
+   `SET_READ(VCHIP_ALU_LEFT_ADDR,1'b1)                \
+   `WAIT_TIME                                         \
+   `WAIT_TIME                                         \
+   `CHECK_VAL(16'h0000)                               \
+   `WAIT_TIME                                         \
+   `CLEAR_BUS                                         
 
 module top_verichip5 ();
 
@@ -98,6 +149,7 @@ localparam VCHIP_ALU_SHR   = 16'h0007;
 localparam ONE = 1'b1;
 localparam ZERO = 1'b0;
 
+
 initial begin
 
 
@@ -105,10 +157,38 @@ initial begin
 
 
 
+   //verifying in reset state
+   $display("\n\nverifying in reset state\n\n");
+   `CLEAR_ALL
+   `STATE_RESET
+   `WAIT_TIME
+   `STATE_TESTER(16'h0000)
+
+   //verifying how to get from reset to Normal state
+   $display("\n\nverifying how to get from reset to Normal state\n\n");
+   `CLEAR_ALL
+   `CHIP_RESET
+   `WAIT_TIME
+   `STATE_RESET_TO_NORMAL
+   `WAIT_TIME
+   `STATE_TESTER(16'h0001)
+
+
+   //verifying how to get from Normal to Export violation
+   `CLEAR_ALL
+   `CHIP_RESET
+   `WAIT_TIME
+   `STATE_RESET_TO_NORMAL
+   `WAIT_TIME
+   `EXPORT_STATE
+   
+//-------------------PUSH FOR INITIAL TEST -----------------------------------------------
+//==================CHNAGES TO BE MADE AFTER TEST 1=====================================
 
 
 
-
+//============================XXXXXXXXXXXXX=================================================
+   
 
 
 
