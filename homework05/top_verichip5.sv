@@ -552,6 +552,9 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_RESET)
 
@@ -561,6 +564,9 @@ initial begin
    `CHIP_RESET
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_RESET)
@@ -608,6 +614,9 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
 
@@ -616,6 +625,9 @@ initial begin
    `GOTO_NORMAL
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
@@ -659,11 +671,10 @@ initial begin
    $display("E3: Error + m=1 g=0 => Normal");
    `GOTO_ERROR
    @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;   // step 1: assert error recovery
+   maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
-   `CLK_WAIT
    @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;   // step 2: complete handshake to Normal
+   maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
@@ -673,6 +684,9 @@ initial begin
    `GOTO_ERROR
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_ERROR)
@@ -719,6 +733,9 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
 
@@ -727,6 +744,9 @@ initial begin
    `GOTO_EXPVIO
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
