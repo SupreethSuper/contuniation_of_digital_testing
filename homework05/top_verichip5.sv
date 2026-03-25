@@ -401,11 +401,16 @@
    `CLK_WAIT
 
 // Full chip reset then transition into Normal state cleanly
+// Deassert gold after transition so it does not linger into subsequent steps
 `define GOTO_NORMAL                    \
    `CLEAR_ALL                         \
    `CHIP_RESET                        \
    @(negedge clk);                    \
    `STATE_RESET_TO_NORMAL             \
+   @(posedge clk);                    \
+   `CLK_WAIT                          \
+   @(negedge clk);                    \
+   maroon <= 1'b0; gold <= 1'b0;      \
    @(posedge clk);                    \
    `CLK_WAIT
 
@@ -552,9 +557,11 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
    `CLK_WAIT
    `READ_STATUS(FSM_RESET)
 
@@ -673,9 +680,12 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
 
@@ -685,9 +695,11 @@ initial begin
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
    @(posedge clk);
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
    `CLK_WAIT
    `READ_STATUS(FSM_ERROR)
 
