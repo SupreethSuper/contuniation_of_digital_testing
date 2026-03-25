@@ -1194,7 +1194,7 @@
    `CLEAR_BUS
 
 // ---------------------------------------------------------------------------
-// FSM test helpers (new for hw03 Prof. Milman 6-case requirement)           |    
+// FSM test helpers (new for hw03 Prof. Milman 6-case requirement)
 // ---------------------------------------------------------------------------
 
 // Read Status register bits[3:0] and compare against expected FSM state
@@ -1237,6 +1237,10 @@
    `CHIP_RESET                        \
    @(negedge clk);                    \
    `STATE_RESET_TO_NORMAL             \
+   @(posedge clk);                    \
+   `CLK_WAIT                          \
+   @(negedge clk);                    \
+   maroon <= 1'b0; gold <= 1'b0;      \
    @(posedge clk);                    \
    `CLK_WAIT
 
@@ -1407,6 +1411,7 @@ initial begin
    `CLEAR_ALL
    `CHIP_RESET
    `ISSUE_BAD_CMD
+   `CLK_WAIT
    `READ_STATUS(FSM_RESET)
 
    // R6: Export violation command in Reset => stays Reset (commands ignored)
@@ -1619,8 +1624,8 @@ verichip5 verichip5 (
 );
 
 initial begin
-   $fsdbDumpfile("verichip.fsdb");
-   $fsdbDumpvars(0, top_verichip5);
+   $dumpfile("verichip.vcd");
+   $dumpvars(0, top_verichip5);
 end
 
 endmodule
