@@ -1,0 +1,71 @@
+Command: /afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework05/./simv_verichip5 -l .log +vpdbufsize+500 +vpdfileswitchsize+5000 +vcs+lic+wait +vpdports +SAIF -l simv_verichip5.log
+Chronologic VCS simulator copyright 1991-2022
+Contains Synopsys proprietary information.
+Compiler version T-2022.06-SP2-1_Full64; Runtime version T-2022.06-SP2-1_Full64;  Mar 25 08:07 2026
+
+
+Verifying in Reset state
+
+
+
+
+Verifying Reset -> Normal state transition
+
+
+
+
+Verifying Normal -> Export Violation state
+
+
+
+
+=== FSM TESTS: RESET STATE ===
+
+R1: Reset + m=0 g=0 => stays Reset
+R2: Reset + m=0 g=1 => Normal
+R3: Reset + m=1 g=0 => detects design bug (transitions to Normal)
+FSM MISMATCH: got state 0 expected 1 at               515000
+R4: Reset + m=1 g=1 => stays Reset
+R5: Reset + illegal cmd => stays Reset
+R6: Reset + export_disable + cmd => stays Reset
+
+
+=== FSM TESTS: NORMAL STATE ===
+
+N1: Normal + m=0 g=0 => stays Normal
+N2: Normal + m=0 g=1 => stays Normal
+N3: Normal + m=1 g=0 => stays Normal
+N4: Normal + m=1 g=1 => stays Normal
+N5: Normal + illegal cmd => Error
+N6: Normal + export_disable + cmd => Export Violation
+
+
+=== FSM TESTS: ERROR STATE ===
+
+E1: Error + m=0 g=0 => stays Error
+E2: Error + m=0 g=1 => stays Error
+E3: Error + m=1 g=0 => Normal
+E4: Error + m=1 g=1 => stays Error
+E5: Error + illegal cmd => stays Error
+E6: Error + export_disable + cmd => stays Error
+
+
+=== FSM TESTS: EXPORT VIOLATION STATE ===
+
+X1: ExpVio + m=0 g=0 => stays ExpVio
+X2: ExpVio + m=0 g=1 => stays ExpVio
+X3: ExpVio + m=1 g=0 => stays ExpVio
+X4: ExpVio + m=1 g=1 => stays ExpVio
+X5: ExpVio + illegal cmd => stays ExpVio
+X6: ExpVio + export_disable + cmd => stays ExpVio
+
+
+All FSM state tests complete.
+
+
+$finish called from file "top_verichip5.sv", line 797.
+$finish at simulation time              3160000
+           V C S   S i m u l a t i o n   R e p o r t 
+Time: 3160000 ps
+CPU Time:      0.660 seconds;       Data structure size:   0.0Mb
+Wed Mar 25 08:07:57 2026
