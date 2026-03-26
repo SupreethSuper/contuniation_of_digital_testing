@@ -1412,7 +1412,10 @@ initial begin
    `CHIP_RESET
    `ISSUE_BAD_CMD
    `CLK_WAIT
+   `CLK_WAIT
    `READ_STATUS(FSM_RESET)
+   // Also verify ALU commands are still ignored (confirms Reset behavior)
+   `STATE_TESTER(16'h0000)
 
    // R6: Export violation command in Reset => stays Reset (commands ignored)
    $display("R6: Reset + export_disable + cmd => stays Reset");
@@ -1488,11 +1491,16 @@ initial begin
    // E1: maroon=0 gold=0 in Error => stays Error
    $display("E1: Error + m=0 g=0 => stays Error");
    `GOTO_ERROR
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
+   `CLK_WAIT
    `READ_STATUS(FSM_ERROR)
+   // Verify writes are disabled (Error behavior): write to Left, confirm unchanged
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 1'b1)
 
    // E2: maroon=0 gold=1 in Error => stays Error (Reset->Normal signal invalid here)
    $display("E2: Error + m=0 g=1 => stays Error");
@@ -1506,14 +1514,21 @@ initial begin
    // E3: maroon=1 gold=0 in Error => transitions to Normal
    $display("E3: Error + m=1 g=0 => Normal");
    `GOTO_ERROR
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
+   `CLK_WAIT
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
+   `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
+   // Verify writes are enabled (Normal behavior): write to Left, confirm written
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hCAFE, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'hCAFE, 1'b1)
 
    // E4: maroon=1 gold=1 in Error => stays Error (invalid combination)
    $display("E4: Error + m=1 g=1 => stays Error");
@@ -1548,11 +1563,17 @@ initial begin
    // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
    $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
    `GOTO_EXPVIO
+   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
+   `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
+   // Verify Left register is reset (ExpVio resets registers)
+   // and write is disabled
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b11, 1'b1)
+   `CLK_WAIT
 
    // X2: maroon=0 gold=1 in ExpVio => stays ExpVio
    $display("X2: ExpVio + m=0 g=1 => stays ExpVio");
