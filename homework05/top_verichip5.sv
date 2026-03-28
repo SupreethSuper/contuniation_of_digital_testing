@@ -168,10 +168,24 @@
 `define ISSUE_EXPVIO_CMD               \
    @(negedge clk);                    \
    export_disable <= 1'b1;            \
-   `SET_WRITE(7'h08, 16'h0007, 2'b11, 1'b1) \
-   #10;                                   \
-   
+   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1) \
+   @(posedge clk);                    \
+   @(negedge clk);                    \
+   export_disable <= 1'b0;            \
+   `CLEAR_BUS                         \
+   @(posedge clk);                    \
+   `CLK_WAIT
 
+// Enter ExpVio but KEEP export_disable=1 after entry
+`define ISSUE_EXPVIO_CMD_HOLD          \
+   @(negedge clk);                    \
+   export_disable <= 1'b1;            \
+   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1) \
+   @(posedge clk);                    \
+   @(negedge clk);                    \
+   `CLEAR_BUS                         \
+   @(posedge clk);                    \
+   `CLK_WAIT
 
 // Full chip reset then transition into Normal state cleanly
 `define GOTO_NORMAL                    \
@@ -195,6 +209,11 @@
 `define GOTO_EXPVIO                    \
    `GOTO_NORMAL                       \
    `ISSUE_EXPVIO_CMD
+
+// Enter ExpVio but keep export_disable high
+`define GOTO_EXPVIO_HOLD               \
+   `GOTO_NORMAL                       \
+   `ISSUE_EXPVIO_CMD_HOLD
 
 // ---------------------------------------------------------------------------
 // Module
@@ -501,13 +520,20 @@ initial begin
    // Only rst_b exits this state; all other inputs are ignored.
    // -------------------------------------------------------------------------
    $display("\n\n=== FSM TESTS: EXPORT VIOLATION STATE ===\n");
-   `CLEAR_ALL
 
    // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
+   // Use GOTO_EXPVIO_HOLD to keep export_disable=1 through the check,
+   // catching buggy variants that treat export_disable as level-sensitive
    $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
-   `GOTO_EXPVIO
+   `GOTO_EXPVIO_HOLD
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
+   `CLK_WAIT
+   `READ_STATUS(FSM_EXPVIO)
+   // Now also verify it stays after export_disable is cleared
+   @(negedge clk);
+   export_disable <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
