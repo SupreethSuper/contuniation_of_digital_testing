@@ -1,234 +1,105 @@
 `timescale 1ns/1ps
 
-// ---------------------------------------------------------------------------
-// Bus primitives
-// ---------------------------------------------------------------------------
-
 `define SET_WRITE(addr,val,bytes,cs)   \
-   rw_          <= 1'b0;              \
-   chip_select  <= cs;                \
-   byte_en      <= bytes;             \
-   address      <= addr;              \
-   data_in      <= val;
+   rw_ <= 1'b0;                     \
+   chip_select <= cs;               \
+   byte_en <= bytes;                \
+   address <= addr;                 \
+   data_in <= val;
 
-`define SET_READ(addr,cs)              \
-   rw_          <= 1'b1;              \
-   chip_select  <= cs;                \
-   byte_en      <= 2'b00;             \
-   address      <= addr;              \
-   data_in      <= 16'h0;
+`define SET_READ(addr,cs)           \
+   rw_ <= 1'b1;                     \
+   chip_select <= cs;               \
+   byte_en <= 2'b11;                \
+   address <= addr;                 \
+   data_in <= 16'h0;
 
-`define CLEAR_BUS                      \
-   chip_select  <= 1'b0;              \
-   address      <= 7'h0;              \
-   byte_en      <= 2'h0;              \
-   rw_          <= 1'b1;              \
-   data_in      <= 16'h0;
+`define CLEAR_BUS                   \
+   chip_select    <= 1'b0;          \
+   address        <= 7'h0;          \
+   byte_en        <= 2'h0;          \
+   rw_            <= 1'b1;          \
+   data_in        <= 16'h0;
 
-`define CLEAR_ALL                      \
-   export_disable <= 1'b0;            \
-   maroon         <= 1'b0;            \
-   gold           <= 1'b0;            \
+`define CLEAR_ALL                   \
+   export_disable <= 1'b0;          \
+   maroon         <= 1'b0;          \
+   gold           <= 1'b0;          \
    `CLEAR_BUS
 
-// ---------------------------------------------------------------------------
-// State machine control inputs
-// ---------------------------------------------------------------------------
+`define CHECK_VAL(val)              \
+   if ( data_out != val )           \
+       $display("bad read, got %h but expected %h at %t",data_out,val,$time());
 
-`define STATE_RESET_TO_NORMAL          \
-   maroon <= 1'b0;                    \
-   gold   <= 1'b1;
+`define CHIP_RESET                  \
+   wait( clk == 1'b0 );             \
+   rst_b <= 1'b0;                   \
+   wait( clk == 1'b1 );             \
+   rst_b <= 1'b1;
 
-`define STATE_ERROR_TO_NORMAL          \
-   maroon <= 1'b1;                    \
-   gold   <= 1'b0;
+`define WRITE_REG(addr,wval,bytes,cs)    \
+   wait( clk == 1'b0 );                 \
+   `SET_WRITE(addr,wval,bytes,cs)       \
+   wait( clk == 1'b1 );                 \
+   `CLEAR_BUS                           \
+   wait( clk == 1'b0 );
 
-// ---------------------------------------------------------------------------
-// Checking / register access helpers
-// ---------------------------------------------------------------------------
+`define READ_REG(addr,rval,cs)           \
+   wait( clk == 1'b0 );                 \
+   `SET_READ(addr,cs)                   \
+   wait( clk == 1'b1 );                 \
+   `CHECK_VAL(rval)                     \
+   `CLEAR_BUS                           \
+   wait( clk == 1'b0 );
 
-`define CHECK_VAL(val)                 \
-   if ( data_out !== val )            \
-      $display("FAIL: got %h but expected %h at %t", data_out, val, $time());
-
-`define WRITE_REG(addr,val,bytes,cs)   \
-   @(negedge clk);                    \
-   `SET_WRITE(addr,val,bytes,cs)      \
-   @(posedge clk);
-
-`define READ_REG(addr,val,cs)          \
-   @(negedge clk);                    \
-   `SET_READ(addr,cs)                 \
-   @(posedge clk);                    \
-   `CHECK_VAL(val)
-
-`define CHECK_RW(addr,wval,rval,bytes,cs) \
-   `WRITE_REG(addr,wval,bytes,cs)         \
+`define CHECK_RW(addr,wval,rval,bytes,cs)    \
+   `WRITE_REG(addr,wval,bytes,cs)            \
    `READ_REG(addr,rval,cs)
 
-// ---------------------------------------------------------------------------
-// Clock / reset helpers
-// ---------------------------------------------------------------------------
+`define MATH_CMD(cmd)                                        \
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | cmd), 2'b11, 1'b1)
 
-`define CLK_WAIT                       \
-   @(posedge clk);
+`define CHANGE_STATE_TO_NORMAL          \
+   wait( clk == 1'b0 );                 \
+   maroon <= 1'b0;                      \
+   gold   <= 1'b1;                      \
+   wait( clk == 1'b1 );                 \
+   wait( clk == 1'b0 );                 \
+   maroon <= 1'b0;                      \
+   gold   <= 1'b0;
 
-`define CHIP_RESET                     \
-   @(negedge clk);                    \
-   rst_b <= 1'b0;                     \
-   @(posedge clk);                    \
-   @(negedge clk);                    \
-   rst_b <= 1'b1;                     \
-   @(posedge clk);
+`define CHANGE_STATE_TO_ERR           \
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
 
-// ---------------------------------------------------------------------------
-// STATE_TESTER
-// ---------------------------------------------------------------------------
-`define STATE_TESTER(val)                             \
-   @(negedge clk);                                   \
-   `SET_WRITE(7'h10, 16'h0001, 2'b11, 1'b1)          \
-   @(posedge clk);                                   \
-   @(negedge clk);                                   \
-   `SET_READ(7'h10, 1'b1)                             \
-   @(posedge clk);                                   \
-   `CHECK_VAL(16'h0001)                              \
-   @(negedge clk);                                   \
-   `SET_WRITE(7'h14, 16'h0002, 2'b11, 1'b1)          \
-   @(posedge clk);                                   \
-   @(negedge clk);                                   \
-   `SET_READ(7'h14, 1'b1)                             \
-   @(posedge clk);                                   \
-   `CHECK_VAL(16'h0002)                              \
-   @(negedge clk);                                   \
-   `SET_WRITE(7'h08, 16'h8001, 2'b11, 1'b1)          \
-   @(posedge clk);                                   \
-   `CLK_WAIT                                         \
-   @(negedge clk);                                   \
-   `SET_READ(7'h18, 1'b1)                             \
-   @(posedge clk);                                   \
-   `CHECK_VAL(val)
+`define CHANGE_STATE_TO_EXP          \
+   wait( clk == 1'b0 );                 \
+   export_disable <= 1'b1;              \
+   wait( clk == 1'b1 );                 \
+   wait( clk == 1'b0 );                 \
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
 
-// ---------------------------------------------------------------------------
-// EXPORT_STATE
-// ---------------------------------------------------------------------------
-`define EXPORT_STATE                                  \
-   @(negedge clk);                                   \
-   export_disable <= 1'b1;                           \
-   `SET_WRITE(7'h10, 16'h1234, 2'b11, 1'b1)          \
-   @(posedge clk);                                   \
-   @(negedge clk);                                   \
-   `CLEAR_BUS                                        \
-   @(posedge clk);                                   \
-   @(negedge clk);                                   \
-   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1)          \
-   @(posedge clk);                                   \
-   @(negedge clk);                                   \
-   `CLEAR_BUS                                        \
-   @(posedge clk);                                   \
-   `CLK_WAIT                                         \
-   @(negedge clk);                                   \
-   `SET_READ(7'h10, 1'b1)                             \
-   @(posedge clk);                                   \
-   `CHECK_VAL(16'h0000)                              \
-   @(negedge clk);                                   \
-   `CLEAR_BUS
+`define CHECK_VER(addr,wval,rval,export_disable, bytes,cs)   \
+wait( clk == 1'b0 );    \
+`WRITE_REG(addr,wval,bytes,cs) \
+`READ_REG(addr,rval,cs)
+ 
 
-// ---------------------------------------------------------------------------
-// FSM test helpers
-// ---------------------------------------------------------------------------
 
-// Read Status register and check FSM state - IMMEDIATE read, no extra waits
-`define READ_STATUS(expected_state)    \
-   @(negedge clk);                    \
-   `SET_READ(7'h04, 1'b1)             \
-   @(posedge clk);                    \
-   if (data_out[3:0] !== expected_state) \
-      $display("FSM MISMATCH: got state %0h expected %0h at %t", \
-               data_out[3:0], expected_state, $time()); \
-   @(negedge clk);                    \
-   `CLEAR_BUS                         \
-   @(posedge clk);
+module top_verichip5();
 
-// Read Status TWICE - once immediately, once after a cycle
-// Catches bugs where state glitches briefly or recovers from LOST
-`define READ_STATUS_TWICE(expected_state) \
-   @(negedge clk);                    \
-   `SET_READ(7'h04, 1'b1)             \
-   @(posedge clk);                    \
-   if (data_out[3:0] !== expected_state) \
-      $display("FSM MISMATCH: got state %0h expected %0h at %t", \
-               data_out[3:0], expected_state, $time()); \
-   @(negedge clk);                    \
-   `SET_READ(7'h04, 1'b1)             \
-   @(posedge clk);                    \
-   if (data_out[3:0] !== expected_state) \
-      $display("FSM MISMATCH2: got state %0h expected %0h at %t", \
-               data_out[3:0], expected_state, $time()); \
-   @(negedge clk);                    \
-   `CLEAR_BUS                         \
-   @(posedge clk);
-
-`define ISSUE_BAD_CMD                  \
-   @(negedge clk);                    \
-   `SET_WRITE(7'h08, 16'h800A, 2'b11, 1'b1) \
-   @(posedge clk);                    \
-   @(negedge clk);                    \
-   `CLEAR_BUS                         \
-   @(posedge clk);                    \
-   `CLK_WAIT
-
-`define ISSUE_EXPVIO_CMD               \
-   @(negedge clk);                    \
-   export_disable <= 1'b1;            \
-   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1) \
-   @(posedge clk);                    \
-   @(negedge clk);                    \
-   export_disable <= 1'b0;            \
-   `CLEAR_BUS                         \
-   @(posedge clk);                    \
-   `CLK_WAIT
-
-`define GOTO_NORMAL                    \
-   `CLEAR_ALL                         \
-   `CHIP_RESET                        \
-   @(negedge clk);                    \
-   `STATE_RESET_TO_NORMAL             \
-   @(posedge clk);                    \
-   `CLK_WAIT                          \
-   @(negedge clk);                    \
-   maroon <= 1'b0; gold <= 1'b0;      \
-   @(posedge clk);                    \
-   `CLK_WAIT
-
-`define GOTO_ERROR                     \
-   `GOTO_NORMAL                       \
-   `ISSUE_BAD_CMD
-
-`define GOTO_EXPVIO                    \
-   `GOTO_NORMAL                       \
-   `ISSUE_EXPVIO_CMD
-
-// ---------------------------------------------------------------------------
-// Module
-// ---------------------------------------------------------------------------
-
-module top_verichip5 ();
-
-logic clk;
-logic rst_b;
-logic export_disable;
-logic interrupt_1;
-logic interrupt_2;
-
-logic maroon;
-logic gold;
-
-logic chip_select;
-logic [6:0] address;
-logic [1:0] byte_en;
-logic       rw_;
-logic [15:0] data_in;
-logic [15:0] data_out;
+logic clk;                       // system clock
+logic rst_b;                     // chip reset
+logic export_disable;            // disable features
+logic interrupt_1;               // first interrupt
+logic interrupt_2;               // second interrupt
+logic maroon;                    // maroon state machine input
+logic gold;                      // gold state machine input
+logic chip_select;               // target of r/w
+logic [6:0] address;             // address bus
+logic [1:0] byte_en;             // write byte enables
+logic       rw_;                 // read/write
+logic [15:0] data_in;            // input data bus
+logic [15:0] data_out;           // output data bus
 
 localparam VCHIP_VER_ADDR       = 7'h00;
 localparam VCHIP_STA_ADDR       = 7'h04;
@@ -247,356 +118,1385 @@ localparam VCHIP_ALU_SWA   = 16'h0005;
 localparam VCHIP_ALU_SHL   = 16'h0006;
 localparam VCHIP_ALU_SHR   = 16'h0007;
 
-localparam ONE  = 1'b1;
-localparam ZERO = 1'b0;
+initial
+begin
+   clk <= 1'b0;
+   while ( 1 )
+   begin
+      #5 clk <= 1'b1;
+      #5 clk <= 1'b0;
+   end
+end
 
-localparam FSM_RESET  = 4'h0;
-localparam FSM_NORMAL = 4'h1;
-localparam FSM_ERROR  = 4'h2;
-localparam FSM_EXPVIO = 4'h8;
-
-initial clk = 0;
-always #5 clk = ~clk;
-
-// ---------------------------------------------------------------------------
-// Test program
-// ---------------------------------------------------------------------------
-initial begin
-
-   `CLEAR_ALL
-   rst_b <= 1'b1;
-   @(posedge clk);
-
-   // =========================================================================
-   // ORIGINAL hw03 smoke tests (preserved)
-   // =========================================================================
-
-   $display("\n\nVerifying in Reset state\n\n");
+initial
+begin
    `CLEAR_ALL
    `CHIP_RESET
-   `STATE_TESTER(16'h0000)
 
-   $display("\n\nVerifying Reset -> Normal state transition\n\n");
+   // 1. RESET STATE
+   // reset clears to 0000, write FFFF->5555->AAAA->0000
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'h5555, 16'h5555, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enables in reset
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR,  16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR,  16'hFFAA, 16'h00AA, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR,  16'hAAFF, 16'hAA00, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,        1'b1)
+
+
+
+   // aliasing reset: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h50,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hAAAA,        1'b1)
+
+   // aliasing reset: cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b0)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hAAAA,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b0)
+
+   // 2. NORMAL STATE
+   `CHANGE_STATE_TO_NORMAL
+
+   // normal state: FFFF->5555->AAAA->0000
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'h5555, 16'h5555, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enables in normal
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR,  16'hFFAA, 16'h00AA, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_LEFT_ADDR,  16'hAAFF, 16'hAA00, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hDEAD,        1'b1)
+
+   // aliasing normal: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h50,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hAAAA,        1'b1)
+
+   // aliasing normal: cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b0)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hAAAA,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b0)
+
+   // 3. STATE_ERR
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hABCD, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hABCD,        1'b1)
+
+   // aliasing err: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hABCD,        1'b1)
+   // aliasing err: cs=0 addr=7'h10 read returns 0
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b0)
+
+   // 4. STATE_EXP
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   `STATE_RESET_TO_NORMAL
-   @(posedge clk);
-   `CLK_WAIT
-   `STATE_TESTER(16'h0003)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5A5A, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_EXP
 
-   $display("\n\nVerifying Normal -> Export Violation state\n\n");
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b1)
+
+   // aliasing exp: cs=1 addr=7'h50 returns 0
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b1)
+   // aliasing exp: cs=0 addr=7'h10 read returns 0
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000,        1'b0)
+
+
+  // reset state version register
+    `CLEAR_ALL
+   `CHIP_RESET
+
+ 
+ 
+   `CHECK_RW(VCHIP_VER_ADDR, 16'hFFFF, 16'h0210, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR, 16'h5555, 16'h0210, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR, 16'hAAAA, 16'h0210, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR, 16'h0000, 16'h0210, 2'b11, 1'b1)
+
+
+   // byte enable for reset state of version register
+    `WRITE_REG(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR,  16'hFFFF, 16'h0210, 2'b11, 1'b1)
+ 
+   `WRITE_REG(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR,  16'hFFAA, 16'h0210, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_VER_ADDR,  16'hAAFF, 16'h0210, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_VER_ADDR,  16'h0210,        1'b1)
+
+   // aliasing : cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_VER_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h40,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h40,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_VER_ADDR,  16'h0210,        1'b1)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_VER_ADDR,  16'h0210,        1'b1)
+
+   
+ // aliasing : cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+  //  `WRITE_REG(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'h5555, 2'b11, 1'b0)
+//   `READ_REG(VCHIP_VER_ADDR,  16'h0210,        1'b1)
+   `READ_REG(VCHIP_VER_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b0)
+    `READ_REG(VCHIP_VER_ADDR,  16'h0000,        1'b0)
+    `WRITE_REG(7'h10,               16'h5555, 2'b11, 1'b0)
+    `READ_REG(7'h10,                16'h0000,        1'b0)
+
+
+
+
+// normal state of  version register
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   `STATE_RESET_TO_NORMAL
-   @(posedge clk);
-   `CLK_WAIT
-   `EXPORT_STATE
+  `CHANGE_STATE_TO_NORMAL
 
-   // =========================================================================
-   // FSM STATE TESTS  (Prof. Milman: 6 cases per state)
-   // =========================================================================
+  export_disable = 1;
+   wait(clk == 1'b1)
+    `CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h8210,1'b1, 2'b11,1'b1)
+//
+export_disable = 0;
+wait(clk == 1'b0)
+`CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h0210,1'b0, 2'b11,1'b1)
 
-   // -------------------------------------------------------------------------
-   // STATE: RESET  (FSM_RESET = 4'h0)
-   // -------------------------------------------------------------------------
-   $display("\n\n=== FSM TESTS: RESET STATE ===\n");
+// error_state of version register
+  wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 0)
+  `CHANGE_STATE_TO_ERR
 
-   // R1: maroon=0 gold=0 in Reset => stays Reset
-   $display("R1: Reset + m=0 g=0 => stays Reset");
+
+  export_disable = 1;
+   wait(clk == 1'b1)
+    `CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h8210,1'b1, 2'b11,1'b1)
+
+
+//
+export_disable = 0;
+wait(clk == 1'b0)
+`CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h0210,1'b0, 2'b11,1'b1)
+
+
+// export_voilation state of version register
+
+
+    wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 0)
+   `CHANGE_STATE_TO_EXP
+
+  export_disable = 1;
+   wait(clk == 1'b1)
+    `CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h8210,1'b1, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h8210,1'b1, 2'b11,1'b1)
+//
+export_disable = 0;
+wait(clk == 1'b0)
+`CHECK_VER(VCHIP_VER_ADDR,16'hFFFF,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h5555,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'hAAAA,16'h0210,1'b0, 2'b11,1'b1)
+    wait(clk == 1'b1);
+    `CHECK_VER(VCHIP_VER_ADDR,16'h0000,16'h0210,1'b0, 2'b11,1'b1)
+
+
+
+
+// reset state of status register
+
+  `CLEAR_ALL
+   `CHIP_RESET
+
+
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hFFFF, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h5555, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hAAAA, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+ // byte enable for reset state of version register
+    `WRITE_REG(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
+    `CHECK_RW(VCHIP_STA_ADDR,  16'hFFFF, 16'h0210, 2'b11, 1'b1)
+
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR,  16'hFFAA, 16'h0000, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR,  16'hAAFF, 16'h0000, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b1)
+
+
+// aliasing : cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_STA_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h44,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h44,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0210,        1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0210,        1'b1)
+
+
+
+ // aliasing : cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+  //  `WRITE_REG(VCHIP_VER_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h5555, 2'b11, 1'b0)
+//   `READ_REG(VCHIP_VER_ADDR,  16'h0210,        1'b1)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'hFFFF, 2'b11, 1'b0)
+    `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(7'h44,               16'h5555, 2'b11, 1'b0)
+   `READ_REG(7'h44,                16'h0000,        1'b0)
+
+// RESET: both interrupt outputs low and status=0
+`CLEAR_ALL
+`CHIP_RESET
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 reset expected 0 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b0) $display("FAIL int2 reset expected 0 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0000, 1'b1)
+
+
+
+
+// NORMAL: both interrupt outputs low
+`CHANGE_STATE_TO_NORMAL
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 normal expected 0 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b0) $display("FAIL int2 normal expected 0 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0001, 1'b1)
+
+
+
+
+// NORMAL -> ERROR by reserved command, INT1 disabled: state goes to ERR, INT1 stays 0
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`CHANGE_STATE_TO_ERR
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 err disabled expected 0 got %b at %t", interrupt_1, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+
+
+// NORMAL -> ERROR by reserved command, INT1 enabled: INT1 sets
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b10, 1'b1)
+`CHANGE_STATE_TO_ERR
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 err enabled expected 1 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b0) $display("FAIL int2 should remain 0 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+// ERROR: write 0 does not clear INT1
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 err write0 should not clear at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+
+// ERROR: write 1 clears INT1
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 err clear expected 0 got %b at %t", interrupt_1, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+
+// NORMAL overflow path to INT1
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b10, 1'b1)
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h7FFF, 2'b11, 1'b1)
+`WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
+`MATH_CMD(VCHIP_ALU_ADD)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 overflow expected 1 got %b at %t", interrupt_1, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+
+// Return to NORMAL from ERROR_state, INT1 must persist until cleared
+wait( clk == 1'b0 );
+maroon <= 1'b1;
+gold <= 1'b0;
+wait( clk == 1'b1 );
+wait( clk == 1'b0 );
+maroon <= 1'b0;
+gold <= 1'b0;
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 should persist back in normal at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0101, 1'b1)
+
+
+
+
+
+// NORMAL: write 0 does not clear INT1
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 normal write0 should not clear at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0101, 1'b1)
+
+
+
+
+
+// NORMAL: write 1 clears INT1
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 normal clear expected 0 got %b at %t", interrupt_1, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0001, 1'b1)
+
+// EXPORT VIOLATION with only INT2 enabled: INT1=0, INT2=1
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b10, 1'b1)
+`CHANGE_STATE_TO_EXP
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 exp expected 0 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b1) $display("FAIL int2 exp expected 1 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+// EXP: write 0 does not clear INT2
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_2 !== 1'b1) $display("FAIL int2 exp write0 should not clear at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+// EXP: write INT1 clear only must not affect INT2
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_2 !== 1'b1) $display("FAIL int2 changed when clearing int1 at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+// EXP: write INT2 clear works
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_2 !== 1'b0) $display("FAIL int2 exp clear expected 0 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+
+
+
+
+
+
+// Build both INT1 and INT2, then clear only INT1 in EXP and ensure INT2 unaffected
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b10, 1'b1)
+
+// First set INT1 by overflow -> ERROR
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h7FFF, 2'b11, 1'b1)
+`WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0001, 2'b11, 1'b1)
+`MATH_CMD(VCHIP_ALU_ADD)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+
+
+
+
+
+
+// Return to NORMAL preserving INT1
+wait( clk == 1'b0 );
+maroon <= 1'b1;
+gold <= 1'b0;
+wait( clk == 1'b1 );
+wait( clk == 1'b0 );
+maroon <= 1'b0;
+gold <= 1'b0;
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+`READ_REG(VCHIP_STA_ADDR, 16'h0101, 1'b1)
+
+// Enter EXPORT VIOLATION, INT2 sets, INT1 persists
+`CHANGE_STATE_TO_EXP
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b1) $display("FAIL int1 exp both-set expected 1 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b1) $display("FAIL int2 exp both-set expected 1 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+
+// EXP: write 0 does not clear either
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+`READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+
+// EXP: clear only INT1, INT2 must remain
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 exp clear expected 0 got %b at %t", interrupt_1, $time());
+if (interrupt_2 !== 1'b1) $display("FAIL int2 changed when clearing int1 in exp at %t", $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+// EXP: clear only INT2
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b10, 1'b1)
+wait( clk == 1'b1 ); wait( clk == 1'b0 );
+if (interrupt_1 !== 1'b0) $display("FAIL int1 changed when clearing int2 in exp at %t", $time());
+if (interrupt_2 !== 1'b0) $display("FAIL int2 exp clear expected 0 got %b at %t", interrupt_2, $time());
+`READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+
+
+
+
+
+
+
+// normal state of status register
+ `CLEAR_ALL
+   `CHIP_RESET
+  `CHANGE_STATE_TO_NORMAL
+
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hFFFF, 16'h0001, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h5555, 16'h0001, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hAAAA, 16'h0001, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h0000, 16'h0001, 2'b11, 1'b1)
+
+
+/*
+
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_RESET)
+  `CHANGE_STATE_TO_NORMAL
 
-   // R2: maroon=0 gold=1 in Reset => transitions to Normal
-   $display("R2: Reset + m=0 g=1 => Normal");
+
+  `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b10, 1'b1)
+`CHANGE_STATE_TO_ERR
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+
+// _state: write 0 does not clear INT1
+
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait(clk == 1'b1)
+`READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+
+// clearing int1
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait(clk == 1'b1)
+`READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+
+`CLEAR_ALL
+`CHIP_RESET
+`CHANGE_STATE_TO_NORMAL
+`WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b10, 1'b1)
+`CHANGE_STATE_TO_EXP
+wait( clk == 1'b1 )
+
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait(clk == 1'b1)
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+
+wait(clk == 1'b0)
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 )
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+wait(clk == 1'b0)
+
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b10, 1'b1)
+wait( clk == 1'b1 )
+`READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+
+wait(clk == 1'b0)
+
+
+`CHANGE_STATE_TO_EXP
+wait( clk == 1'b1 );
+
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+wait( clk == 1'b1 )
+`READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+
+wait(clk == 1'b0)
+
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+wait( clk == 1'b1 )
+`READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+
+
+// EXP: clear only INT2
+`WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b10, 1'b1)
+wait( clk == 1'b1 )
+`READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+
+
+
+//error_state of status register
+
+  wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 1'b0)
+  `CHANGE_STATE_TO_ERR
+
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hFFFF, 16'h0002, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h5555, 16'h0002, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hAAAA, 16'h0002, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h0000, 16'h0002, 2'b11, 1'b1)
+
+
+
+//export_voilation state of status register
+
+ wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 0)
+   `CHANGE_STATE_TO_EXP
+
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hFFFF, 16'h0008, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h5555, 16'h0008, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'hAAAA, 16'h0008, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_STA_ADDR, 16'h0000, 16'h0008, 2'b11, 1'b1)
+*/
+
+
+//reset state for command register
+`CLEAR_ALL
+   `CHIP_RESET
+
+
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hFFFF, 16'h800F, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h5555, 16'h0005, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hAAAA, 16'h800A, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enable for reset state of version register
+    `WRITE_REG(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
+    `CHECK_RW(VCHIP_CMD_ADDR,  16'hFFFF, 16'h800F, 2'b11, 1'b1)
+
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR,  16'hFFAA, 16'h000A, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR,  16'hAAFF, 16'h8000, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_CMD_ADDR,  16'h000F,        1'b1)
+
+
+// aliasing : cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h48,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h48,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_CMD_ADDR,  16'h000A,        1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CMD_ADDR,  16'h800F,        1'b1)
+
+ // aliasing : cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+  //  `WRITE_REG(VCHIP_CMD_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h5555, 2'b11, 1'b0)
+//   `READ_REG(VCHIP_CMD_ADDR,  16'h0210,        1'b1)
+   `READ_REG(VCHIP_CMD_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'hFFFF, 2'b11, 1'b0)
+    `READ_REG(VCHIP_CMD_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(7'h48,               16'h5555, 2'b11, 1'b0)
+   `READ_REG(7'h48,                16'h0000,        1'b0)
+
+
+
+// normal state for command register
+
+ `CLEAR_ALL
+   `CHIP_RESET
+  `CHANGE_STATE_TO_NORMAL
+ 
+
+   
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h5555, 2'b11, 1'b1)
+  `READ_REG(VCHIP_CMD_ADDR,  16'h0005,        1'b1)
+   
+//  `WRITE_REG(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
+//  `READ_REG(VCHIP_CMD_ADDR,  16'h000A,        1'b1)
+ 
+ `WRITE_REG(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CMD_ADDR,  16'h0000,        1'b1)
+
+`CLEAR_ALL
+   `CHIP_RESET
+  `CHANGE_STATE_TO_NORMAL
+
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'hFFFF, 2'b11, 1'b1)
+    `READ_REG(VCHIP_CMD_ADDR,  16'h000F,        1'b1)  
+
+`CLEAR_ALL
+   `CHIP_RESET
+  `CHANGE_STATE_TO_NORMAL
+
+  `WRITE_REG(VCHIP_CMD_ADDR, 16'hAAAA, 2'b11, 1'b1)
+  `READ_REG(VCHIP_CMD_ADDR,  16'h000A,        1'b1)
+
+
+//error_state for command register
+   wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 1'b0)
+  `CHANGE_STATE_TO_ERR
+
+
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hFFFF, 16'h800F, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h5555, 16'h000F, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hAAAA, 16'h000F, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h0000, 16'h000F, 2'b11, 1'b1)
+
+
+
+//export voilation for command register
+
+wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 0)
+   `CHANGE_STATE_TO_EXP
+
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hFFFF, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h5555, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'hAAAA, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CMD_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+
+
+
+
+//configuration register
+
+  //reset state for config reg
+
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
 
-   // R3: maroon=1 gold=0 in Reset => stays Reset
-   $display("R3: Reset + m=1 g=0 => stays Reset");
+
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hFFFF, 16'h0300, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h5555, 16'h0100, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hAAAA, 16'h0200, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enable for reset state of version register
+    `WRITE_REG(VCHIP_CON_ADDR, 16'hAAAA, 2'b11, 1'b1)
+    `CHECK_RW(VCHIP_CON_ADDR,  16'hFFFF, 16'h0300, 2'b11, 1'b1)
+
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR,  16'hFFAA, 16'h0000, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR,  16'hAAFF, 16'h0200, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR,  16'h0200,        1'b1)
+
+
+// aliasing : cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_CON_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h4C,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h4C,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_CON_ADDR,  16'h0200,        1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR,  16'h0300,        1'b1)
+
+ // aliasing : cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+  //  `WRITE_REG(VCHIP_CMD_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h5555, 2'b11, 1'b0)
+//   `READ_REG(VCHIP_CON_ADDR,  16'h0210,        1'b1)
+   `READ_REG(VCHIP_CON_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'hFFFF, 2'b11, 1'b0)
+    `READ_REG(VCHIP_CON_ADDR,  16'h0000,        1'b0)
+   `WRITE_REG(7'h48,               16'h5555, 2'b11, 1'b0)
+   `READ_REG(7'h48,                16'h0000,        1'b0)
+
+
+//normal state of configuration register
+
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_RESET)
+  `CHANGE_STATE_TO_NORMAL
 
-   // R4: maroon=1 gold=1 in Reset => stays Reset (invalid combination)
-   $display("R4: Reset + m=1 g=1 => stays Reset");
+
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hFFFF, 16'h0300, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h5555, 16'h0100, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hAAAA, 16'h0200, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+
+// error_state of configuration register
+
+  wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 1'b0)
+  `CHANGE_STATE_TO_ERR
+ 
+ 
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hFFFF, 16'h0300, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h5555, 16'h0300, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hAAAA, 16'h0300, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h0000, 16'h0300, 2'b11, 1'b1)
+
+//export_voilation state of configuration register
+
+ wait(clk == 1'b0)
+    `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+    wait(clk == 0)
+   `CHANGE_STATE_TO_EXP
+
+ 
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hFFFF, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h5555, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'hAAAA, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_CON_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+
+
+
+
+
+
+
+
+
+
+//alu_right register
+
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   // 1. RESET STATE
+   // reset clears to 0000, write FFFF->5555->AAAA->0000
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 16'h5555, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enables in reset
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR,  16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR,  16'hFFAA, 16'h00AA, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR,  16'hAAFF, 16'hAA00, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hBEEF,        1'b1)
+
+   // aliasing reset: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h54,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h54,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hAAAA,        1'b1)
+   // aliasing reset: cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b0)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hAAAA,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b0)
+
+   // 2. NORMAL STATE
+   `CHANGE_STATE_TO_NORMAL
+
+   // normal state: FFFF->5555->AAAA->0000
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 16'hFFFF, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 16'h5555, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enables in normal
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR,  16'hFFAA, 16'h00AA, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_RIGHT_ADDR,  16'hAAFF, 16'hAA00, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hDEAD, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hDEAD,        1'b1)
+
+   // aliasing normal: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h54,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h54,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hAAAA,        1'b1)
+   // aliasing normal: cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b0)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hAAAA,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b0)
+
+   // 3. STATE_ERR
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hABCD, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hABCD,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hABCD,        1'b1)
+
+   // aliasing err: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'hABCD,        1'b1)
+   // aliasing err: cs=0 addr=7'h10 read returns 0
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b0)
+
+   // 4. STATE_EXP
    `CLEAR_ALL
    `CHIP_RESET
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b1;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_RESET)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5A5A, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_EXP
 
-   // R5: Illegal command in Reset => stays Reset (commands ignored in Reset)
-   // A buggy design might go to Error or LOST on bad_cmd even in Reset.
-   // Read status immediately after the command, then also read again later
-   // to catch designs that briefly go to LOST and recover.
-   $display("R5: Reset + illegal cmd => stays Reset");
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b1)
+
+   // aliasing exp: cs=1 addr=7'h50 returns 0
+   `READ_REG(7'h50,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b1)
+   // aliasing exp: cs=0 addr=7'h10 read returns 0
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR,  16'h0000,        1'b0)
+
+
+//alu_out register
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   // 1. RESET STATE
+   // reset clears to 0000, write FFFF->5555->AAAA->0000
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR, 16'hFFFF, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR, 16'h5555, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR, 16'h0000, 16'h0000, 2'b11, 1'b1)
+
+   // byte enables in reset
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR,  16'hFFFF, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR,  16'hFFAA, 16'h0000, 2'b01, 1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHECK_RW(VCHIP_ALU_OUT_ADDR,  16'hAAFF, 16'h0000, 2'b10, 1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h1234, 2'b00, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+
+   // aliasing reset: cs=1 addr=7'h50 returns 0, does not affect 7'h10
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `WRITE_REG(7'h58,               16'h5555, 2'b11, 1'b1)
+   `READ_REG(7'h58,                16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+ 
+ // aliasing reset: cs=0 addr=7'h10 write ignored, cs=0 read returns 0
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h5555, 2'b11, 1'b0)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b0)
+
+
+
+   // 2. NORMAL STATE
+     `CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+   // normal state: FFFF->5555->AAAA->0000
+
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h5555, 2'b11, 1'b1)
+  `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+
+ 
+ 
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h5555, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+wait(clk == 1'b1)
+ `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h5555,        1'b1)
+
+
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+wait(clk == 1'b1)
+ `READ_REG(VCHIP_ALU_OUT_ADDR,  16'hAAAA,        1'b1)
+
+
+`WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+ `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+wait(clk == 1'b1)
+ `READ_REG(VCHIP_ALU_OUT_ADDR,  16'hFFFF,        1'b1)
+
+
+
+
+   // 3. STATE_ERR
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hABCD, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+
+ 
+   // 4. STATE_EXP
    `CLEAR_ALL
    `CHIP_RESET
-   // Issue bad command
-   @(negedge clk);
-   `SET_WRITE(7'h08, 16'h800A, 2'b11, 1'b1)
-   @(posedge clk);
-   // Read status IMMEDIATELY on the next cycle - catch any transient state
-   @(negedge clk);
-   `SET_READ(7'h04, 1'b1)
-   @(posedge clk);
-   if (data_out[3:0] !== FSM_RESET)
-      $display("FSM MISMATCH: got state %0h expected %0h at %t",
-               data_out[3:0], FSM_RESET, $time());
-   @(negedge clk);
-   `CLEAR_BUS
-   @(posedge clk);
-   // Also read a second time to catch delayed transitions
-   `CLK_WAIT
-   `READ_STATUS(FSM_RESET)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h5A5A, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_EXP
 
-   // R6: Export violation command in Reset => stays Reset (commands ignored)
-   $display("R6: Reset + export_disable + cmd => stays Reset");
-   `CLEAR_ALL
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h5555, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'hAAAA, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,  16'h0000,        1'b1)
+
+
+// reset_state  state_machine
+   
+ `CLEAR_ALL
+ `CHIP_RESET
+
+wait(clk == 1'b1)
+wait(clk == 1'b0)
+    maroon = 1'b1;
+    gold   = 1'b1;
+  wait(clk == 1'b1)
+wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b1)
+
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+    maroon = 1'b1;
+    gold   = 1'b0;
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b1)
+
+
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_ERR
+   
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b1)
+
+
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+   `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0000,        1'b1)
+
+
+// normal_state in the state machine
+
+  `CLEAR_ALL
    `CHIP_RESET
-   `ISSUE_EXPVIO_CMD
-   `READ_STATUS(FSM_RESET)
 
-   // -------------------------------------------------------------------------
-   // STATE: NORMAL  (FSM_NORMAL = 4'h1)
-   // -------------------------------------------------------------------------
-   $display("\n\n=== FSM TESTS: NORMAL STATE ===\n");
+   `CHANGE_STATE_TO_NORMAL
 
-   // N1: maroon=0 gold=0 in Normal => stays Normal
-   $display("N1: Normal + m=0 g=0 => stays Normal");
-   `GOTO_NORMAL
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
+   wait(clk == 1'b1)
+        wait(clk == 1'b0)
+    maroon = 1'b1;
+    gold   = 1'b1;
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0001,        1'b1)
 
-   // N2: maroon=0 gold=1 in Normal => stays Normal (already in Normal)
-   $display("N2: Normal + m=0 g=1 => stays Normal");
-   `GOTO_NORMAL
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
 
-   // N3: maroon=1 gold=0 in Normal => stays Normal
-   $display("N3: Normal + m=1 g=0 => stays Normal");
-   `GOTO_NORMAL
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
 
-   // N4: maroon=1 gold=1 in Normal => stays Normal (invalid combination)
-   $display("N4: Normal + m=1 g=1 => stays Normal");
-   `GOTO_NORMAL
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b1;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
+ `CLEAR_ALL
+   `CHIP_RESET
 
-   // N5: Illegal command in Normal => transitions to Error
-   $display("N5: Normal + illegal cmd => Error");
-   `GOTO_NORMAL
-   `ISSUE_BAD_CMD
-   `READ_STATUS(FSM_ERROR)
+   `CHANGE_STATE_TO_NORMAL
 
-   // N6: Export violation command in Normal => transitions to Export Violation
-   $display("N6: Normal + export_disable + cmd => Export Violation");
-   `GOTO_NORMAL
-   `ISSUE_EXPVIO_CMD
-   `READ_STATUS(FSM_EXPVIO)
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+    maroon = 1'b1;
+    gold   = 1'b0;
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0001,        1'b1)
 
-   // -------------------------------------------------------------------------
-   // STATE: ERROR  (FSM_ERROR = 4'h2)
-   // -------------------------------------------------------------------------
-   $display("\n\n=== FSM TESTS: ERROR STATE ===\n");
 
-   // E1: maroon=0 gold=0 in Error => stays Error
-   // Buggy design may go to LOST state on m=0,g=0. Read immediately.
-   $display("E1: Error + m=0 g=0 => stays Error");
-   `GOTO_ERROR
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   // Read IMMEDIATELY - no extra CLK_WAITs
-   `READ_STATUS(FSM_ERROR)
-   // Read again one cycle later to catch delayed glitch or LOST recovery
-   `READ_STATUS(FSM_ERROR)
+ `CLEAR_ALL
+   `CHIP_RESET
 
-   // E2: maroon=0 gold=1 in Error => stays Error
-   $display("E2: Error + m=0 g=1 => stays Error");
-   `GOTO_ERROR
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_ERROR)
+   `CHANGE_STATE_TO_NORMAL
 
-   // E3: maroon=1 gold=0 in Error => transitions to Normal
-   $display("E3: Error + m=1 g=0 => Normal");
-   `GOTO_ERROR
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_NORMAL)
+   wait(clk == 1'b1)
+        wait(clk == 1'b0)
+    maroon = 1'b0;
+    gold   = 1'b1;
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0001,        1'b1)
+////////
 
-   // E4: maroon=1 gold=1 in Error => stays Error (invalid combination)
-   // Buggy design may interpret m=1 as MG' exit even with g=1
-   // or may go to a LOST state
-   $display("E4: Error + m=1 g=1 => stays Error");
-   `GOTO_ERROR
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b1;
-   @(posedge clk);
-   // Read IMMEDIATELY
-   `READ_STATUS(FSM_ERROR)
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   // Read again after deassert
-   `READ_STATUS(FSM_ERROR)
 
-   // E5: Illegal command in Error => stays Error (writes are disabled)
-   $display("E5: Error + illegal cmd => stays Error");
-   `GOTO_ERROR
-   `ISSUE_BAD_CMD
-   `READ_STATUS(FSM_ERROR)
 
-   // E6: Export violation command in Error => stays Error (writes are disabled)
-   $display("E6: Error + export_disable + cmd => stays Error");
-   `GOTO_ERROR
-   `ISSUE_EXPVIO_CMD
-   `READ_STATUS(FSM_ERROR)
+// error_state state machine
 
-   // -------------------------------------------------------------------------
-   // STATE: EXPORT VIOLATION  (FSM_EXPVIO = 4'h8)
-   // -------------------------------------------------------------------------
-   $display("\n\n=== FSM TESTS: EXPORT VIOLATION STATE ===\n");
+`CLEAR_ALL
+ `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
 
-   // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
-   // Buggy design may go to LOST state when no inputs are active.
-   // Read immediately, then also check after additional cycles.
-   $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
-   `GOTO_EXPVIO
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   // Read IMMEDIATELY
-   `READ_STATUS(FSM_EXPVIO)
-   // Read again to catch delayed transition or LOST recovery
-   `READ_STATUS(FSM_EXPVIO)
 
-   // X2: maroon=0 gold=1 in ExpVio => stays ExpVio
-   $display("X2: ExpVio + m=0 g=1 => stays ExpVio");
-   `GOTO_EXPVIO
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_EXPVIO)
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
 
-   // X3: maroon=1 gold=0 in ExpVio => stays ExpVio
-   $display("X3: ExpVio + m=1 g=0 => stays ExpVio");
-   `GOTO_EXPVIO
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_EXPVIO)
+ `CHANGE_STATE_TO_ERR
 
-   // X4: maroon=1 gold=1 in ExpVio => stays ExpVio
-   $display("X4: ExpVio + m=1 g=1 => stays ExpVio");
-   `GOTO_EXPVIO
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b1;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_EXPVIO)
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
 
-   // X5: Illegal command in ExpVio => stays ExpVio (writes ignored)
-   $display("X5: ExpVio + illegal cmd => stays ExpVio");
-   `GOTO_EXPVIO
-   `ISSUE_BAD_CMD
-   `READ_STATUS(FSM_EXPVIO)
+ `CHANGE_STATE_TO_ERR
 
-   // X6: Export violation command in ExpVio => stays ExpVio
-   $display("X6: ExpVio + export_disable + cmd => stays ExpVio");
-   `GOTO_EXPVIO
-   `ISSUE_EXPVIO_CMD
-   `READ_STATUS(FSM_EXPVIO)
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0002,        1'b1)
 
-   // =========================================================================
-   $display("\n\nAll FSM state tests complete.\n\n");
+
+//
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+`CHANGE_STATE_TO_NORMAL
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_ERR
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+   `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0002,        1'b1)
+
+
+//
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_ERR
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+    maroon = 1'b1;
+    gold   = 1'b1;
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0002,        1'b1)
+
+  //
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_ERR
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+ 
+      maroon = 1'b1;
+      gold   = 1'b0;
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0001,        1'b1)
+
+`CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_ERR
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+      maroon = 1'b0;
+      gold   = 1'b1;
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0002,        1'b1)
+
+
+//export_voilation_state for state_machine
+
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+      maroon = 1'b1;
+      gold   = 1'b0;
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0008,        1'b1)
+
+//
+
+ `CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+      maroon = 1'b0;
+      gold   = 1'b1;
+
+   
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0008,        1'b1)
+
+//
+
+
+`CLEAR_ALL
+   `CHIP_RESET
+
+   `CHANGE_STATE_TO_NORMAL
+
+     wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+      maroon = 1'b1;
+      gold   = 1'b1;
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0008,        1'b1)
+
+
+// export_voilation state to error_state
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+`CHANGE_STATE_TO_NORMAL
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+   `CHANGE_STATE_TO_EXP
+       
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+ //     `CHANGE_STATE_TO_ERR
+
+      export_disable <= 1'b0;
+     
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+ 
+     `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+ 
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0008,        1'b1)
+
+
+// export_voilation state to export_voilation state
+
+
+`CLEAR_ALL
+ `CHIP_RESET
+
+`CHANGE_STATE_TO_NORMAL
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+   `CHANGE_STATE_TO_EXP
+
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+
+  `CHANGE_STATE_TO_EXP
+
+        wait(clk == 1'b1)
+        wait(clk == 1'b0)
+   `READ_REG(VCHIP_STA_ADDR,  16'h0008,        1'b1)
+
+
+
    #5 $finish;
-end
 
-// ---------------------------------------------------------------------------
-// DUT instantiation
-// ---------------------------------------------------------------------------
-verichip5 verichip5 (
-   .clk           ( clk            ),
-   .rst_b         ( rst_b          ),
-   .export_disable( export_disable ),
-   .interrupt_1   ( interrupt_1    ),
-   .interrupt_2   ( interrupt_2    ),
-   .maroon        ( maroon         ),
-   .gold          ( gold           ),
-   .chip_select   ( chip_select    ),
-   .address       ( address        ),
-   .byte_en       ( byte_en        ),
-   .rw_           ( rw_            ),
-   .data_in       ( data_in        ),
-   .data_out      ( data_out       )
-);
+end // initial begin
 
-initial begin
-   $dumpfile("verichip.vcd");
-   $dumpvars(0, top_verichip5);
-end
+verichip5 verichip      (.clk     ( clk ),    // system clock
+         
+                     .rst_b ( rst_b  ),    // chip reset
+                   .export_disable( export_disable ),    // disable features
+                   .interrupt_1   ( interrupt_1    ),    // first interrupt
+                   .interrupt_2   ( interrupt_2    ),    // second interrupt
+
+                   .maroon        ( maroon         ),    // maroon state machine input
+                   .gold          ( gold           ),    // gold state machine input
+                   .chip_select   ( chip_select    ),    // target of r/w
+                   .address       ( address        ),    // address bus
+                   .byte_en       ( byte_en        ),    // write byte enables
+                   .rw_           ( rw_            ),    // read/write
+                   .data_in       ( data_in        ),    // data bus
+                   .data_out      ( data_out       ) );  // output data bus
 
 endmodule
