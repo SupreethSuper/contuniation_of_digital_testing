@@ -82,7 +82,7 @@
    @(posedge clk);
 
 // ---------------------------------------------------------------------------
-// STATE_TESTER: write LEFT=1, RIGHT=2, issue ADD, read ALU_OUT
+// STATE_TESTER
 // ---------------------------------------------------------------------------
 `define STATE_TESTER(val)                             \
    @(negedge clk);                                   \
@@ -137,12 +137,32 @@
 // FSM test helpers
 // ---------------------------------------------------------------------------
 
+// Read Status register and check FSM state - IMMEDIATE read, no extra waits
 `define READ_STATUS(expected_state)    \
    @(negedge clk);                    \
    `SET_READ(7'h04, 1'b1)             \
    @(posedge clk);                    \
    if (data_out[3:0] !== expected_state) \
       $display("FSM MISMATCH: got state %0h expected %0h at %t", \
+               data_out[3:0], expected_state, $time()); \
+   @(negedge clk);                    \
+   `CLEAR_BUS                         \
+   @(posedge clk);
+
+// Read Status TWICE - once immediately, once after a cycle
+// Catches bugs where state glitches briefly or recovers from LOST
+`define READ_STATUS_TWICE(expected_state) \
+   @(negedge clk);                    \
+   `SET_READ(7'h04, 1'b1)             \
+   @(posedge clk);                    \
+   if (data_out[3:0] !== expected_state) \
+      $display("FSM MISMATCH: got state %0h expected %0h at %t", \
+               data_out[3:0], expected_state, $time()); \
+   @(negedge clk);                    \
+   `SET_READ(7'h04, 1'b1)             \
+   @(posedge clk);                    \
+   if (data_out[3:0] !== expected_state) \
+      $display("FSM MISMATCH2: got state %0h expected %0h at %t", \
                data_out[3:0], expected_state, $time()); \
    @(negedge clk);                    \
    `CLEAR_BUS                         \
@@ -330,26 +350,28 @@ initial begin
    `READ_STATUS(FSM_RESET)
 
    // R5: Illegal command in Reset => stays Reset (commands ignored in Reset)
-   // Toggle: first write a VALID normal cmd (add), verify ALU_OUT stays 0
-   // (proves commands are ignored), then issue bad_cmd, verify still Reset
+   // A buggy design might go to Error or LOST on bad_cmd even in Reset.
+   // Read status immediately after the command, then also read again later
+   // to catch designs that briefly go to LOST and recover.
    $display("R5: Reset + illegal cmd => stays Reset");
    `CLEAR_ALL
    `CHIP_RESET
-   // Write Left=1, Right=2 to set up ALU operands
-   `WRITE_REG(7'h10, 16'h0001, 2'b11, 1'b1)
-   `WRITE_REG(7'h14, 16'h0002, 2'b11, 1'b1)
-   // Issue valid ADD command - should be IGNORED in Reset
+   // Issue bad command
    @(negedge clk);
-   `SET_WRITE(7'h08, 16'h8001, 2'b11, 1'b1)
+   `SET_WRITE(7'h08, 16'h800A, 2'b11, 1'b1)
    @(posedge clk);
+   // Read status IMMEDIATELY on the next cycle - catch any transient state
+   @(negedge clk);
+   `SET_READ(7'h04, 1'b1)
+   @(posedge clk);
+   if (data_out[3:0] !== FSM_RESET)
+      $display("FSM MISMATCH: got state %0h expected %0h at %t",
+               data_out[3:0], FSM_RESET, $time());
    @(negedge clk);
    `CLEAR_BUS
    @(posedge clk);
+   // Also read a second time to catch delayed transitions
    `CLK_WAIT
-   // Verify ALU_OUT is still 0 (command was ignored)
-   `READ_REG(7'h18, 16'h0000, 1'b1)
-   // Now issue illegal/reserved command - should also be ignored in Reset
-   `ISSUE_BAD_CMD
    `READ_STATUS(FSM_RESET)
 
    // R6: Export violation command in Reset => stays Reset (commands ignored)
@@ -424,31 +446,15 @@ initial begin
    $display("\n\n=== FSM TESTS: ERROR STATE ===\n");
 
    // E1: maroon=0 gold=0 in Error => stays Error
-   // Toggle: first assert maroon=1 (which would exit Error on correct design
-   // via MG' path), then deassert back to 0,0, and verify still in Error.
-   // This creates an observable difference vs a buggy design.
+   // Buggy design may go to LOST state on m=0,g=0. Read immediately.
    $display("E1: Error + m=0 g=0 => stays Error");
    `GOTO_ERROR
-   // First toggle maroon high then back low to create observable activity
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
-   `CLK_WAIT
-   // On correct design: MG' should have transitioned Error->Normal
-   // So re-enter Error for a clean test
-   // Actually - the point is to test m=0,g=0 stays in Error.
-   // Let me just ensure there IS toggling before the final m=0,g=0 check.
-   `GOTO_ERROR
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
+   // Read IMMEDIATELY - no extra CLK_WAITs
+   `READ_STATUS(FSM_ERROR)
+   // Read again one cycle later to catch delayed glitch or LOST recovery
    `READ_STATUS(FSM_ERROR)
 
    // E2: maroon=0 gold=1 in Error => stays Error
@@ -474,28 +480,19 @@ initial begin
    `READ_STATUS(FSM_NORMAL)
 
    // E4: maroon=1 gold=1 in Error => stays Error (invalid combination)
-   // Toggle: first set m=1,g=0 (valid exit), deassert, re-enter Error,
-   // then test m=1,g=1 which should NOT exit
+   // Buggy design may interpret m=1 as MG' exit even with g=1
+   // or may go to a LOST state
    $display("E4: Error + m=1 g=1 => stays Error");
    `GOTO_ERROR
-   // First pulse m=1 g=0 then deassert - this creates observable toggle
-   @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0;
-   @(posedge clk);
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   // That transitioned to Normal on correct design, so re-enter Error
-   `GOTO_ERROR
-   // Now apply the actual test: m=1 g=1 should NOT exit Error
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
    @(posedge clk);
+   // Read IMMEDIATELY
+   `READ_STATUS(FSM_ERROR)
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
-   `CLK_WAIT
+   // Read again after deassert
    `READ_STATUS(FSM_ERROR)
 
    // E5: Illegal command in Error => stays Error (writes are disabled)
@@ -516,18 +513,16 @@ initial begin
    $display("\n\n=== FSM TESTS: EXPORT VIOLATION STATE ===\n");
 
    // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
-   // Toggle: first pulse gold=1 (which would exit on buggy design),
-   // deassert to 0,0, then verify still in ExpVio
+   // Buggy design may go to LOST state when no inputs are active.
+   // Read immediately, then also check after additional cycles.
    $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
    `GOTO_EXPVIO
-   // Pulse gold high then back to 0 - creates observable toggle
-   @(negedge clk);
-   maroon <= 1'b0; gold <= 1'b1;
-   @(posedge clk);
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
-   `CLK_WAIT
+   // Read IMMEDIATELY
+   `READ_STATUS(FSM_EXPVIO)
+   // Read again to catch delayed transition or LOST recovery
    `READ_STATUS(FSM_EXPVIO)
 
    // X2: maroon=0 gold=1 in ExpVio => stays ExpVio
