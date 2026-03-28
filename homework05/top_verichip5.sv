@@ -336,6 +336,9 @@ initial begin
    `CLEAR_ALL
    `CHIP_RESET
    @(negedge clk);
+   maroon <= 1'b1; gold <= 1'b0; //proves toggle
+   @(posedge clk);
+   @(posedge clk);
    maroon <= 1'b0; gold <= 1'b1;
    @(posedge clk);
    `CLK_WAIT
