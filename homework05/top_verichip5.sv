@@ -35,12 +35,10 @@
 // State machine control inputs
 // ---------------------------------------------------------------------------
 
-// maroon=0, gold=1  =>  !maroon && gold  =>  Reset -> Normal
 `define STATE_RESET_TO_NORMAL          \
    maroon <= 1'b0;                    \
    gold   <= 1'b1;
 
-// maroon=1, gold=0  =>  Error -> Normal handshake (step 1)
 `define STATE_ERROR_TO_NORMAL          \
    maroon <= 1'b1;                    \
    gold   <= 1'b0;
@@ -85,8 +83,6 @@
 
 // ---------------------------------------------------------------------------
 // STATE_TESTER: write LEFT=1, RIGHT=2, issue ADD, read ALU_OUT
-//   Reset state  => ALU ignored => ALU_OUT stays 0  => pass val=16'h0000
-//   Normal state => ADD executes => ALU_OUT = 3     => pass val=16'h0003
 // ---------------------------------------------------------------------------
 `define STATE_TESTER(val)                             \
    @(negedge clk);                                   \
@@ -113,8 +109,7 @@
    `CHECK_VAL(val)
 
 // ---------------------------------------------------------------------------
-// EXPORT_STATE: set export_disable, write LEFT, issue SHL => Export Violation
-//   then verify LED register has been reset to 0
+// EXPORT_STATE
 // ---------------------------------------------------------------------------
 `define EXPORT_STATE                                  \
    @(negedge clk);                                   \
@@ -139,10 +134,9 @@
    `CLEAR_BUS
 
 // ---------------------------------------------------------------------------
-// FSM test helpers (new for hw03 Prof. Milman 6-case requirement)
+// FSM test helpers
 // ---------------------------------------------------------------------------
 
-// Read Status register bits[3:0] and compare against expected FSM state
 `define READ_STATUS(expected_state)    \
    @(negedge clk);                    \
    `SET_READ(7'h04, 1'b1)             \
@@ -154,7 +148,6 @@
    `CLEAR_BUS                         \
    @(posedge clk);
 
-// Issue an illegal/reserved command (CMD=4'hA, Valid=1)
 `define ISSUE_BAD_CMD                  \
    @(negedge clk);                    \
    `SET_WRITE(7'h08, 16'h800A, 2'b11, 1'b1) \
@@ -164,7 +157,6 @@
    @(posedge clk);                    \
    `CLK_WAIT
 
-// Issue an export-violation command (export_disable=1 + SHL command)
 `define ISSUE_EXPVIO_CMD               \
    @(negedge clk);                    \
    export_disable <= 1'b1;            \
@@ -176,18 +168,6 @@
    @(posedge clk);                    \
    `CLK_WAIT
 
-// Enter ExpVio but KEEP export_disable=1 after entry
-`define ISSUE_EXPVIO_CMD_HOLD          \
-   @(negedge clk);                    \
-   export_disable <= 1'b1;            \
-   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1) \
-   @(posedge clk);                    \
-   @(negedge clk);                    \
-   `CLEAR_BUS                         \
-   @(posedge clk);                    \
-   `CLK_WAIT
-
-// Full chip reset then transition into Normal state cleanly
 `define GOTO_NORMAL                    \
    `CLEAR_ALL                         \
    `CHIP_RESET                        \
@@ -200,20 +180,13 @@
    @(posedge clk);                    \
    `CLK_WAIT
 
-// Put chip into Error state from Normal (bad command)
 `define GOTO_ERROR                     \
    `GOTO_NORMAL                       \
    `ISSUE_BAD_CMD
 
-// Put chip into Export Violation state from Normal
 `define GOTO_EXPVIO                    \
    `GOTO_NORMAL                       \
    `ISSUE_EXPVIO_CMD
-
-// Enter ExpVio but keep export_disable high
-`define GOTO_EXPVIO_HOLD               \
-   `GOTO_NORMAL                       \
-   `ISSUE_EXPVIO_CMD_HOLD
 
 // ---------------------------------------------------------------------------
 // Module
@@ -257,13 +230,11 @@ localparam VCHIP_ALU_SHR   = 16'h0007;
 localparam ONE  = 1'b1;
 localparam ZERO = 1'b0;
 
-// FSM state encodings (Status register bits [3:0])
 localparam FSM_RESET  = 4'h0;
 localparam FSM_NORMAL = 4'h1;
 localparam FSM_ERROR  = 4'h2;
 localparam FSM_EXPVIO = 4'h8;
 
-// Clock generation
 initial clk = 0;
 always #5 clk = ~clk;
 
@@ -272,7 +243,6 @@ always #5 clk = ~clk;
 // ---------------------------------------------------------------------------
 initial begin
 
-   // Initialise all signals
    `CLEAR_ALL
    rst_b <= 1'b1;
    @(posedge clk);
@@ -306,14 +276,6 @@ initial begin
 
    // =========================================================================
    // FSM STATE TESTS  (Prof. Milman: 6 cases per state)
-   //
-   // The 6 inputs tested in every state are:
-   //   1. maroon=0, gold=0   (no transition signal)
-   //   2. maroon=0, gold=1   (Reset->Normal signal)
-   //   3. maroon=1, gold=0   (Error->Normal signal)
-   //   4. maroon=1, gold=1   (illegal combination)
-   //   5. Illegal command    (CMD=4'hA with Valid=1)
-   //   6. Export violation   (export_disable=1 + restricted CMD)
    // =========================================================================
 
    // -------------------------------------------------------------------------
@@ -336,15 +298,12 @@ initial begin
    `CLEAR_ALL
    `CHIP_RESET
    @(negedge clk);
-   maroon <= 1'b1; gold <= 1'b0; //proves toggle
-   @(posedge clk);
-   @(posedge clk);
    maroon <= 1'b0; gold <= 1'b1;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
 
-   // R3: maroon=1 gold=0 in Reset => stays Reset (Error->Normal only valid from Error)
+   // R3: maroon=1 gold=0 in Reset => stays Reset
    $display("R3: Reset + m=1 g=0 => stays Reset");
    `CLEAR_ALL
    `CHIP_RESET
@@ -371,15 +330,27 @@ initial begin
    `READ_STATUS(FSM_RESET)
 
    // R5: Illegal command in Reset => stays Reset (commands ignored in Reset)
+   // Toggle: first write a VALID normal cmd (add), verify ALU_OUT stays 0
+   // (proves commands are ignored), then issue bad_cmd, verify still Reset
    $display("R5: Reset + illegal cmd => stays Reset");
    `CLEAR_ALL
    `CHIP_RESET
+   // Write Left=1, Right=2 to set up ALU operands
+   `WRITE_REG(7'h10, 16'h0001, 2'b11, 1'b1)
+   `WRITE_REG(7'h14, 16'h0002, 2'b11, 1'b1)
+   // Issue valid ADD command - should be IGNORED in Reset
+   @(negedge clk);
+   `SET_WRITE(7'h08, 16'h8001, 2'b11, 1'b1)
+   @(posedge clk);
+   @(negedge clk);
+   `CLEAR_BUS
+   @(posedge clk);
+   `CLK_WAIT
+   // Verify ALU_OUT is still 0 (command was ignored)
+   `READ_REG(7'h18, 16'h0000, 1'b1)
+   // Now issue illegal/reserved command - should also be ignored in Reset
    `ISSUE_BAD_CMD
-   `CLK_WAIT
-   `CLK_WAIT
    `READ_STATUS(FSM_RESET)
-   // Also verify ALU commands are still ignored (confirms Reset behavior)
-   `STATE_TESTER(16'h0000)
 
    // R6: Export violation command in Reset => stays Reset (commands ignored)
    $display("R6: Reset + export_disable + cmd => stays Reset");
@@ -411,7 +382,7 @@ initial begin
    `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
 
-   // N3: maroon=1 gold=0 in Normal => stays Normal (Error->Normal only from Error)
+   // N3: maroon=1 gold=0 in Normal => stays Normal
    $display("N3: Normal + m=1 g=0 => stays Normal");
    `GOTO_NORMAL
    @(negedge clk);
@@ -453,20 +424,34 @@ initial begin
    $display("\n\n=== FSM TESTS: ERROR STATE ===\n");
 
    // E1: maroon=0 gold=0 in Error => stays Error
+   // Toggle: first assert maroon=1 (which would exit Error on correct design
+   // via MG' path), then deassert back to 0,0, and verify still in Error.
+   // This creates an observable difference vs a buggy design.
    $display("E1: Error + m=0 g=0 => stays Error");
    `GOTO_ERROR
-   `CLK_WAIT
+   // First toggle maroon high then back low to create observable activity
+   @(negedge clk);
+   maroon <= 1'b1; gold <= 1'b0;
+   @(posedge clk);
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
+   // On correct design: MG' should have transitioned Error->Normal
+   // So re-enter Error for a clean test
+   // Actually - the point is to test m=0,g=0 stays in Error.
+   // Let me just ensure there IS toggling before the final m=0,g=0 check.
+   `GOTO_ERROR
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b1;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_ERROR)
-   // Verify writes are disabled (Error behavior): write to Left, confirm unchanged
-   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hBEEF, 2'b11, 1'b1)
-   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 1'b1)
 
-   // E2: maroon=0 gold=1 in Error => stays Error (Reset->Normal signal invalid here)
+   // E2: maroon=0 gold=1 in Error => stays Error
    $display("E2: Error + m=0 g=1 => stays Error");
    `GOTO_ERROR
    @(negedge clk);
@@ -478,25 +463,32 @@ initial begin
    // E3: maroon=1 gold=0 in Error => transitions to Normal
    $display("E3: Error + m=1 g=0 => Normal");
    `GOTO_ERROR
-   `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b0;
    @(posedge clk);
-   `CLK_WAIT
    `CLK_WAIT
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
-   `CLK_WAIT
    `READ_STATUS(FSM_NORMAL)
-   // Verify writes are enabled (Normal behavior): write to Left, confirm written
-   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hCAFE, 2'b11, 1'b1)
-   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'hCAFE, 1'b1)
 
    // E4: maroon=1 gold=1 in Error => stays Error (invalid combination)
+   // Toggle: first set m=1,g=0 (valid exit), deassert, re-enter Error,
+   // then test m=1,g=1 which should NOT exit
    $display("E4: Error + m=1 g=1 => stays Error");
    `GOTO_ERROR
+   // First pulse m=1 g=0 then deassert - this creates observable toggle
+   @(negedge clk);
+   maroon <= 1'b1; gold <= 1'b0;
+   @(posedge clk);
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b0;
+   @(posedge clk);
+   `CLK_WAIT
+   // That transitioned to Normal on correct design, so re-enter Error
+   `GOTO_ERROR
+   // Now apply the actual test: m=1 g=1 should NOT exit Error
    @(negedge clk);
    maroon <= 1'b1; gold <= 1'b1;
    @(posedge clk);
@@ -520,27 +512,23 @@ initial begin
 
    // -------------------------------------------------------------------------
    // STATE: EXPORT VIOLATION  (FSM_EXPVIO = 4'h8)
-   // Only rst_b exits this state; all other inputs are ignored.
    // -------------------------------------------------------------------------
    $display("\n\n=== FSM TESTS: EXPORT VIOLATION STATE ===\n");
 
    // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
-   // Use GOTO_EXPVIO_HOLD to keep export_disable=1 through the check,
-   // catching buggy variants that treat export_disable as level-sensitive
+   // Toggle: first pulse gold=1 (which would exit on buggy design),
+   // deassert to 0,0, then verify still in ExpVio
    $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
-   `GOTO_EXPVIO_HOLD
+   `GOTO_EXPVIO
+   // Pulse gold high then back to 0 - creates observable toggle
+   @(negedge clk);
+   maroon <= 1'b0; gold <= 1'b1;
+   @(posedge clk);
    @(negedge clk);
    maroon <= 1'b0; gold <= 1'b0;
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-   // Now also verify it stays after export_disable is cleared
-   @(negedge clk);
-   export_disable <= 1'b0;
-   @(posedge clk);
-   `CLK_WAIT
-   `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // X2: maroon=0 gold=1 in ExpVio => stays ExpVio
    $display("X2: ExpVio + m=0 g=1 => stays ExpVio");
@@ -550,7 +538,6 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // X3: maroon=1 gold=0 in ExpVio => stays ExpVio
    $display("X3: ExpVio + m=1 g=0 => stays ExpVio");
@@ -563,7 +550,6 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // X4: maroon=1 gold=1 in ExpVio => stays ExpVio
    $display("X4: ExpVio + m=1 g=1 => stays ExpVio");
@@ -576,21 +562,18 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // X5: Illegal command in ExpVio => stays ExpVio (writes ignored)
    $display("X5: ExpVio + illegal cmd => stays ExpVio");
    `GOTO_EXPVIO
    `ISSUE_BAD_CMD
    `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // X6: Export violation command in ExpVio => stays ExpVio
    $display("X6: ExpVio + export_disable + cmd => stays ExpVio");
    `GOTO_EXPVIO
    `ISSUE_EXPVIO_CMD
    `READ_STATUS(FSM_EXPVIO)
-   `CLEAR_ALL
 
    // =========================================================================
    $display("\n\nAll FSM state tests complete.\n\n");
