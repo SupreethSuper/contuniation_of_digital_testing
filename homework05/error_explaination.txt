@@ -1,9 +1,0 @@
-This is with the file source uploaded
-
-FROM LEFT to RIGHT
-bit 0 : 00
-bit 1 : 01
-bit 2 : 10
-bit 3 : 11
-bit 4 : Try to go to error
-bit 5 : Try to go to export
