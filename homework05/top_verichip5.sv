@@ -1554,12 +1554,12 @@ initial begin
    `ISSUE_EXPVIO_CMD
    `READ_STATUS(FSM_ERROR)
 
-   // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
    // STATE: EXPORT VIOLATION  (FSM_EXPVIO = 4'h8)
    // Only rst_b exits this state; all other inputs are ignored.
    // -------------------------------------------------------------------------
    $display("\n\n=== FSM TESTS: EXPORT VIOLATION STATE ===\n");
-
+ 
    // X1: maroon=0 gold=0 in ExpVio => stays ExpVio
    $display("X1: ExpVio + m=0 g=0 => stays ExpVio");
    `GOTO_EXPVIO
@@ -1574,7 +1574,7 @@ initial begin
    // and write is disabled
    `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hDEAD, 2'b11, 1'b1)
    `CLK_WAIT
-
+ 
    // X2: maroon=0 gold=1 in ExpVio => stays ExpVio
    $display("X2: ExpVio + m=0 g=1 => stays ExpVio");
    `GOTO_EXPVIO
@@ -1583,7 +1583,7 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-
+ 
    // X3: maroon=1 gold=0 in ExpVio => stays ExpVio
    $display("X3: ExpVio + m=1 g=0 => stays ExpVio");
    `GOTO_EXPVIO
@@ -1595,7 +1595,7 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-
+ 
    // X4: maroon=1 gold=1 in ExpVio => stays ExpVio
    $display("X4: ExpVio + m=1 g=1 => stays ExpVio");
    `GOTO_EXPVIO
@@ -1607,19 +1607,28 @@ initial begin
    @(posedge clk);
    `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-
+ 
    // X5: Illegal command in ExpVio => stays ExpVio (writes ignored)
    $display("X5: ExpVio + illegal cmd => stays ExpVio");
    `GOTO_EXPVIO
    `ISSUE_BAD_CMD
    `READ_STATUS(FSM_EXPVIO)
-
+ 
    // X6: Export violation command in ExpVio => stays ExpVio
    $display("X6: ExpVio + export_disable + cmd => stays ExpVio");
    `GOTO_EXPVIO
-   `ISSUE_EXPVIO_CMD
+   @(negedge clk);
+   export_disable <= 1'b1;
+   `SET_WRITE(7'h08, 16'h8006, 2'b11, 1'b1)
+   @(posedge clk);
+   @(negedge clk);
+   export_disable <= 1'b0;
+   `CLEAR_BUS
+   @(posedge clk);
+   `CLK_WAIT
+   `CLK_WAIT
    `READ_STATUS(FSM_EXPVIO)
-
+ 
    // =========================================================================
    $display("\n\nAll FSM state tests complete.\n\n");
    #5 $finish;
