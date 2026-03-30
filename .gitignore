@@ -6,3 +6,10 @@
 
 #dont put any sort of JSON files
 *.json
+#dont add any wave files now
+*.do
+*.txt
+*.ini
+transcript
+*.wlf
+work/*
