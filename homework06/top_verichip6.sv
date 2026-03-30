@@ -132,6 +132,7 @@ initial
 begin
    `CLEAR_ALL
    `CHIP_RESET
+   #10;
 
    //perform add operation : right -> 0x5050, left -> 0x0505
    `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5050, 2'b11, 1'b1)
