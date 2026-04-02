@@ -78,11 +78,28 @@
    wait( clk == 1'b0 );                 \
    `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
 
-`define CHECK_VER(addr,wval,rval,export_disable, bytes,cs)   \
-wait( clk == 1'b0 );    \
-`WRITE_REG(addr,wval,bytes,cs) \
-`READ_REG(addr,rval,cs)
- 
+`define WAIT_CYCLE                       \
+   wait( clk == 1'b1 );                 \
+   wait( clk == 1'b0 );
+
+`define SETUP_ALU(lval, rval)            \
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, lval, 2'b11, 1'b1) \
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, rval, 2'b11, 1'b1)
+
+`define CHECK_ALU_AND_STATE(exp_left, exp_right, exp_out, exp_state) \
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, exp_left, 1'b1)   \
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, exp_right, 1'b1) \
+   `READ_REG(VCHIP_ALU_OUT_ADDR, exp_out, 1'b1)     \
+   `READ_REG(VCHIP_STA_ADDR, exp_state, 1'b1)
+
+// Setup for export tests: set export_disable=1, clear other signals, then reset
+`define SETUP_EXPORT                     \
+   wait( clk == 1'b0 );                 \
+   export_disable <= 1'b1;              \
+   maroon <= 1'b0;                      \
+   gold   <= 1'b0;                      \
+   `CLEAR_BUS                           \
+   `CHIP_RESET
 
 
 module top_verichip6();
@@ -118,6 +135,18 @@ localparam VCHIP_ALU_SWA   = 16'h0005;
 localparam VCHIP_ALU_SHL   = 16'h0006;
 localparam VCHIP_ALU_SHR   = 16'h0007;
 
+// Status register values for each state
+localparam STA_RESET  = 16'h0000;
+localparam STA_NORMAL = 16'h0001;
+localparam STA_ERROR  = 16'h0002;
+localparam STA_EXPORT = 16'h0008;
+
+// Test values: left, right, and out(=0 from reset) are all different
+localparam TEST_LEFT  = 16'h000A;  // 10
+localparam TEST_RIGHT = 16'h0003;  //  3
+
+integer i;
+
 initial
 begin
    clk <= 1'b0;
@@ -130,34 +159,254 @@ end
 
 initial
 begin
+
+   // ===================================================================
+   // SECTION 1: RESET STATE - Test all 16 commands
+   // In reset state, commands are ignored. ALU registers stay unchanged.
+   // State must remain in Reset (0x0).
+   // ===================================================================
+   $display("\n=== RESET STATE TESTS ===");
+
+   for (i = 0; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      // Issue command i with valid bit set
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      // Verify: no change to ALU regs, state still Reset
+      `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_RESET)
+      $display("Reset cmd %0d: PASS at %t", i, $time());
+   end
+
+   // ===================================================================
+   // SECTION 2: NORMAL STATE - Test all 16 commands (export_disable=0)
+   // Legal commands (0-7) get correct answers, state stays Normal.
+   // Illegal commands (8-F) go to Error state.
+   // ===================================================================
+   $display("\n=== NORMAL STATE TESTS ===");
+
+   // --- cmd 0: no command (nothing changes) ---
    `CLEAR_ALL
    `CHIP_RESET
-   #10;
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0000), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_NORMAL)
+   $display("Normal cmd 0 (none): PASS at %t", $time());
 
-   //perform add operation : right -> 0x5050, left -> 0x0505
-   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h5050, 2'b11, 1'b1)
-   $display("\n\n\nright -> 0x5050 at %t\n\n\n",$time());
-   #10;
-   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0505, 2'b11, 1'b1)
-   $display("\n\n\nleft -> 0x0505 at %t\n\n\n",$time());
-   #10;
+   // --- cmd 1: add (out = 0xA + 0x3 = 0xD) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
    `MATH_CMD(VCHIP_ALU_ADD)
-   $display("\n\n\nadd operation at %t\n\n\n",$time());
-   #10;
-   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h5555, 1'b1)
-   $display("\n\n\noutput -> 0x5555 at %t\n\n\n",$time());
-   #10;
-   `CHECK_VAL(16'h0000)
-   
-   #10;
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h000D, STA_NORMAL)
+   $display("Normal cmd 1 (add): PASS at %t", $time());
 
+   // --- cmd 2: sub (out = 0xA - 0x3 = 0x7) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0007, STA_NORMAL)
+   $display("Normal cmd 2 (sub): PASS at %t", $time());
 
+   // --- cmd 3: mvl (left = out = 0x0000) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(16'h0000, TEST_RIGHT, 16'h0000, STA_NORMAL)
+   $display("Normal cmd 3 (mvl): PASS at %t", $time());
 
+   // --- cmd 4: mvr (right = out = 0x0000) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_MVR)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, 16'h0000, 16'h0000, STA_NORMAL)
+   $display("Normal cmd 4 (mvr): PASS at %t", $time());
 
-   #5 $finish;
+   // --- cmd 5: swap (left=right=0x3, right=left=0xA, out unchanged) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_RIGHT, TEST_LEFT, 16'h0000, STA_NORMAL)
+   $display("Normal cmd 5 (swap): PASS at %t", $time());
+
+   // --- cmd 6: shl (out = 0xA << 3 = 0x50) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SHL)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0050, STA_NORMAL)
+   $display("Normal cmd 6 (shl): PASS at %t", $time());
+
+   // --- cmd 7: shr (out = 0xA >> 3 = 0x1) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SHR)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0001, STA_NORMAL)
+   $display("Normal cmd 7 (shr): PASS at %t", $time());
+
+   // --- cmd 8-15: illegal commands -> Error state, ALU unchanged ---
+   for (i = 8; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      `CHANGE_STATE_TO_NORMAL
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_ERROR)
+      $display("Normal cmd %0d (illegal->Error): PASS at %t", i, $time());
+   end
+
+   // ===================================================================
+   // SECTION 3: OVERFLOW VIOLATION - 4 tests
+   // Add/sub overflow with export_disable=0 and export_disable=1
+   // All should go to Error state.
+   // ===================================================================
+   $display("\n=== OVERFLOW TESTS ===");
+
+   // --- Add overflow, export_disable=0 ---
+   // 0x7FFF + 0x0001 = 0x8000 (pos + pos = neg -> overflow)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(16'h7FFF, 16'h0001, 16'h8000, STA_ERROR)
+   $display("Overflow add (no export): PASS at %t", $time());
+
+   // --- Sub overflow, export_disable=0 ---
+   // 0x8000 - 0x0001 = 0x7FFF (neg - pos = pos -> overflow)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(16'h8000, 16'h0001, 16'h7FFF, STA_ERROR)
+   $display("Overflow sub (no export): PASS at %t", $time());
+
+   // --- Add overflow, export_disable=1 ---
+   // Add (cmd=1) is allowed with export, but overflow still -> Error
+   `SETUP_EXPORT
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(16'h7FFF, 16'h0001, 16'h8000, STA_ERROR)
+   $display("Overflow add (with export): PASS at %t", $time());
+
+   // --- Sub overflow, export_disable=1 ---
+   // Sub (cmd=2) is allowed with export, but overflow still -> Error
+   `SETUP_EXPORT
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(16'h8000, 16'h0001, 16'h7FFF, STA_ERROR)
+   $display("Overflow sub (with export): PASS at %t", $time());
+
+   // ===================================================================
+   // SECTION 4: EXPORT DISABLE - Test all 16 commands with export_disable=1
+   // cmd 0-2 are legal (execute normally, stay Normal)
+   // cmd 3-15 cause Export Violation state
+   // ===================================================================
+   $display("\n=== EXPORT DISABLE TESTS ===");
+
+   // --- cmd 0: no command (stays Normal) ---
+   `SETUP_EXPORT
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0000), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_NORMAL)
+   $display("Export cmd 0 (none): PASS at %t", $time());
+
+   // --- cmd 1: add (executes normally, out = 0xA + 0x3 = 0xD) ---
+   `SETUP_EXPORT
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h000D, STA_NORMAL)
+   $display("Export cmd 1 (add): PASS at %t", $time());
+
+   // --- cmd 2: sub (executes normally, out = 0xA - 0x3 = 0x7) ---
+   `SETUP_EXPORT
+   `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+   `CHANGE_STATE_TO_NORMAL
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0007, STA_NORMAL)
+   $display("Export cmd 2 (sub): PASS at %t", $time());
+
+   // --- cmd 3-15: Export Violation (registers cleared, state=0x8) ---
+   for (i = 3; i < 16; i = i + 1)
+   begin
+      `SETUP_EXPORT
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      `CHANGE_STATE_TO_NORMAL
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      // In Export Violation: registers cleared, only Status readable
+      `CHECK_ALU_AND_STATE(16'h0000, 16'h0000, 16'h0000, STA_EXPORT)
+      $display("Export cmd %0d (violation): PASS at %t", i, $time());
+   end
+
+   // ===================================================================
+   // SECTION 5: VALID=0 - Test all 16 commands with valid=0
+   // Nothing should happen. All registers unchanged, state stays Normal.
+   // ===================================================================
+   $display("\n=== VALID=0 TESTS ===");
+
+   for (i = 0; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      `CHANGE_STATE_TO_NORMAL
+      // Write command WITHOUT valid bit (bit 15 = 0)
+      `WRITE_REG(VCHIP_CMD_ADDR, i[15:0], 2'b11, 1'b1)
+      `WAIT_CYCLE
+      // Verify: no change, state still Normal
+      `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_NORMAL)
+      $display("Valid=0 cmd %0d: PASS at %t", i, $time());
+   end
+
+   // ===================================================================
+   // END OF TESTS
+   // ===================================================================
+   $display("\n=== ALL TESTS COMPLETE ===");
+
+   wait(clk == 1'b0);   // MUST LEAVE SO GRADING WORKS!
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   $finish;
 
 end // initial begin
-
 
 
 initial begin : wave_plotter
@@ -167,7 +416,7 @@ end
 
 
 verichip6 verichip6      (.clk     ( clk ),    // system clock
-         
+
                      .rst_b ( rst_b  ),    // chip reset
                    .export_disable( export_disable ),    // disable features
                    .interrupt_1   ( interrupt_1    ),    // first interrupt
