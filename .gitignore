@@ -8,8 +8,10 @@
 *.json
 #dont add any wave files now
 *.do
-*.txt
+
 *.ini
 transcript
 *.wlf
 work/*
+
+#include txt files now
