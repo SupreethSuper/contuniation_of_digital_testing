@@ -431,4 +431,6 @@ verichip7 verichip7      (.clk     ( clk ),    // system clock
                    .data_in       ( data_in        ),    // data bus
                    .data_out      ( data_out       ) );  // output data bus
 
+verichip7_binds verichip7_binds();
+
 endmodule
