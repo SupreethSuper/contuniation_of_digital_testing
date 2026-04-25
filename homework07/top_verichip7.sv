@@ -433,6 +433,86 @@ begin
    end
 
    // ===================================================================
+   // SECTION 7: ALU_LEFT REGISTER - Test writes in range 0xC000-0xFFFF
+   // Writes each value to ALU_LEFT and reads it back to verify.
+   // Tests full-word writes (byte_en=2'b11), high-byte-only writes
+   // (byte_en=2'b10), low-byte-only writes (byte_en=2'b01),
+   // no-byte writes (byte_en=2'b00), and chip_select=0 (no write).
+   // ===================================================================
+   $display("\n=== ALU_LEFT REGISTER TESTS (0xC000 - 0xFFFF) ===");
+
+   // --- 7a: Full word write (byte_en=2'b11) for entire range ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 1'b1)
+   end
+   $display("ALU_LEFT full word 0xC000-0xFFFF: PASS at %t", $time());
+
+   // --- 7b: High byte only (byte_en=2'b10) for entire range ---
+   // Write 0x0000 first to clear, then write high byte only.
+   // Expected: high byte updates, low byte stays 0x00.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   begin
+      // Clear ALU_LEFT to 0x0000
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+      // Write high byte only
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b10, 1'b1)
+      // Expect: high byte from i, low byte stays 0x00
+      `READ_REG(VCHIP_ALU_LEFT_ADDR, {i[15:8], 8'h00}, 1'b1)
+   end
+   $display("ALU_LEFT high byte only 0xC000-0xFFFF: PASS at %t", $time());
+
+   // --- 7c: Low byte only (byte_en=2'b01) for entire range ---
+   // Write 0x0000 first to clear, then write low byte only.
+   // Expected: low byte updates, high byte stays 0x00.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   begin
+      // Clear ALU_LEFT to 0x0000
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+      // Write low byte only
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b01, 1'b1)
+      // Expect: high byte stays 0x00, low byte from i
+      `READ_REG(VCHIP_ALU_LEFT_ADDR, {8'h00, i[7:0]}, 1'b1)
+   end
+   $display("ALU_LEFT low byte only 0xC000-0xFFFF: PASS at %t", $time());
+
+   // --- 7d: No byte enable (byte_en=2'b00) - should NOT update ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b00, 1'b1)
+      // ALU_LEFT should remain 0x0000
+      `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 1'b1)
+   end
+   $display("ALU_LEFT byte_en=00 no update 0xC000-0xFFFF: PASS at %t", $time());
+
+   // --- 7e: chip_select=0 - should NOT update ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 2'b11, 1'b1)
+   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b0)
+      // ALU_LEFT should remain 0x0000 since chip_select=0
+      `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0000, 1'b1)
+   end
+   $display("ALU_LEFT chip_select=0 no update 0xC000-0xFFFF: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
