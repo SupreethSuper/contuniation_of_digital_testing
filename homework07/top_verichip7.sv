@@ -101,6 +101,15 @@
    `CLEAR_BUS                           \
    `CHIP_RESET
 
+`define FORCE_LOST_STATE                    \
+   wait( clk == 1'b0 );                    \
+   force verichip7.state = 4'hF;           \
+   wait( clk == 1'b1 );                    \
+   wait( clk == 1'b0 );                    \
+   release verichip7.state;                \
+   wait( clk == 1'b1 );                    \
+   wait( clk == 1'b0 );
+
 
 module top_verichip7();
 
@@ -140,6 +149,7 @@ localparam STA_RESET  = 16'h0000;
 localparam STA_NORMAL = 16'h0001;
 localparam STA_ERROR  = 16'h0002;
 localparam STA_EXPORT = 16'h0008;
+localparam STA_LOST   = 16'h000F;
 
 // Test values: left, right, and out(=0 from reset) are all different
 localparam TEST_LEFT  = 16'h000A;  // 10
@@ -394,6 +404,32 @@ begin
       // Verify: no change, state still Normal
       `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_NORMAL)
       $display("Valid=0 cmd %0d: PASS at %t", i, $time());
+   end
+
+
+
+   // ===================================================================
+   // SECTION 6: LOST STATE - Test all 16 commands
+   // The LOST state (0xF) is the default case in the state machine.
+   // It is reached when the state register holds an undefined value.
+   // Once in LOST, it stays in LOST. Commands should not execute
+   // (ALU unchanged), and state remains 0xF.
+   // Force is required since no normal transition leads to LOST.
+   // ===================================================================
+   $display("\n=== LOST STATE TESTS ===");
+
+   for (i = 0; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      `FORCE_LOST_STATE
+      // Issue command i with valid bit set
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      // Verify: ALU unchanged, state still LOST
+      `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_LOST)
+      $display("Lost cmd %0d: PASS at %t", i, $time());
    end
 
    // ===================================================================
