@@ -741,6 +741,106 @@ begin
    $display("ALU_RIGHT chip_select=0 no update 0x8000-0xBFFF: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
+   // Verifies that writing to one ALU register does not corrupt the
+   // other. Both registers are exercised with the same value range
+   // and read back together after each write sequence.
+   // ===================================================================
+   $display("\n=== ALU LEFT/RIGHT CROSSOVER TESTS (0x4000 - 0x7FFF) ===");
+
+   // --- 11a: Write same value to both, read both back ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 1'b1)
+   end
+   $display("Crossover same value both regs 0x4000-0x7FFF: PASS at %t", $time());
+
+   // --- 11b: Write LEFT, verify RIGHT unchanged ---
+   // Set RIGHT to a known value, sweep LEFT, confirm RIGHT not corrupted.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 2'b11, 1'b1)
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 1'b1)
+   end
+   $display("Crossover write LEFT, RIGHT unchanged 0x4000-0x7FFF: PASS at %t", $time());
+
+   // --- 11c: Write RIGHT, verify LEFT unchanged ---
+   // Set LEFT to a known value, sweep RIGHT, confirm LEFT not corrupted.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h4000, 2'b11, 1'b1)
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h4000, 1'b1)
+   end
+   $display("Crossover write RIGHT, LEFT unchanged 0x4000-0x7FFF: PASS at %t", $time());
+
+   // --- 11d: Write opposite values to LEFT and RIGHT, read both back ---
+   // LEFT gets i, RIGHT gets the bitwise inverse (~i) within range.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],  2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, ~i[15:0], 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],  1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  ~i[15:0], 1'b1)
+   end
+   $display("Crossover opposite values LEFT/RIGHT 0x4000-0x7FFF: PASS at %t", $time());
+
+   // --- 11e: Byte-enable crossover - high byte LEFT, low byte RIGHT ---
+   // Write high byte only to LEFT, low byte only to RIGHT, verify isolation.
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      // Clear both registers
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+      // Write high byte to LEFT, low byte to RIGHT
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b10, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b01, 1'b1)
+      // LEFT should have high byte only, RIGHT should have low byte only
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {i[15:8], 8'h00}, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {8'h00, i[7:0]},  1'b1)
+   end
+   $display("Crossover byte-enable hi-LEFT lo-RIGHT 0x4000-0x7FFF: PASS at %t", $time());
+
+   // --- 11f: Byte-enable crossover - low byte LEFT, high byte RIGHT ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   begin
+      // Clear both registers
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+      // Write low byte to LEFT, high byte to RIGHT
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b01, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b10, 1'b1)
+      // LEFT should have low byte only, RIGHT should have high byte only
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {8'h00, i[7:0]},  1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {i[15:8], 8'h00}, 1'b1)
+   end
+   $display("Crossover byte-enable lo-LEFT hi-RIGHT 0x4000-0x7FFF: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
