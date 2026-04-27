@@ -992,6 +992,95 @@ begin
    $display("Crossover10.7 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 10.8: ALU_LEFT(0xC000-0xFFFF) / ALU_RIGHT(0x4000-0x7FFF)
+   // CROSSOVER TEST - Boundary + walking patterns (33 values).
+   // LEFT base: 0xC000    RIGHT base: 0x4000
+   // ===================================================================
+   $display("\n=== ALU LEFT(0xC000-0xFFFF) / RIGHT(0x4000-0x7FFF) CROSSOVER ===");
+
+   // --- 10.8a: Full word write to both, read both back ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'hC000), 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
+   end
+   $display("Crossover10.8 full word both regs: PASS at %t", $time());
+
+   // --- 10.8b: Sweep LEFT (0xC000-0xFFFF), RIGHT pinned at 0x4000 ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 2'b11, 1'b1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'hC000), 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 1'b1)
+   end
+   $display("Crossover10.8 sweep LEFT, RIGHT pinned 0x4000: PASS at %t", $time());
+
+   // --- 10.8c: Sweep RIGHT (0x4000-0x7FFF), LEFT pinned at 0xC000 ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'hC000, 2'b11, 1'b1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   16'hC000, 1'b1)
+   end
+   $display("Crossover10.8 sweep RIGHT, LEFT pinned 0xC000: PASS at %t", $time());
+
+   // --- 10.8d: Opposite values - LEFT gets pattern, RIGHT gets inverse ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'hC000),  2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, ~(pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'hC000),  1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  ~(pat_off[j] + 16'hC000), 1'b1)
+   end
+   $display("Crossover10.8 opposite values LEFT/RIGHT: PASS at %t", $time());
+
+   // --- 10.8e: Byte-enable crossover - high byte LEFT, low byte RIGHT ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'hC000), 2'b10, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b01, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {(pat_off[j][15:8] + 8'hC0), 8'h00}, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {8'h00, pat_off[j][7:0]},             1'b1)
+   end
+   $display("Crossover10.8 byte-enable hi-LEFT lo-RIGHT: PASS at %t", $time());
+
+   // --- 10.8f: Byte-enable crossover - low byte LEFT, high byte RIGHT ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   for (j = 0; j < NUM_PATS; j = j + 1)
+   begin
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'hC000), 2'b01, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b10, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {8'h00, pat_off[j][7:0]},             1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {(pat_off[j][15:8] + 8'h40), 8'h00}, 1'b1)
+   end
+   $display("Crossover10.8 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
+
+   // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
    // Uses boundary + walking-1/0 + alternating bit patterns (33 values)
    // instead of exhaustive sweep for fast simulation.
