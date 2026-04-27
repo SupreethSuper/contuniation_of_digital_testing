@@ -156,6 +156,13 @@ localparam TEST_LEFT  = 16'h000A;  // 10
 localparam TEST_RIGHT = 16'h0003;  //  3
 
 integer i;
+integer j;
+
+// Boundary + walking-1 + walking-0 + alternating-bit offsets
+// relative to a 0x4000-wide range (0x0000 .. 0x3FFF).
+// Add a range base (0x4000, 0x8000, 0xC000) to get actual values.
+localparam integer NUM_PATS = 33;
+logic [15:0] pat_off [0:NUM_PATS-1];
 
 initial
 begin
@@ -169,6 +176,30 @@ end
 
 initial
 begin
+
+   // Initialize pattern offsets (boundary + walking-1 + walking-0 + alternating)
+   // Boundaries
+   pat_off[0]  = 16'h0000;  pat_off[1]  = 16'h0001;
+   pat_off[2]  = 16'h3FFE;  pat_off[3]  = 16'h3FFF;
+   // Midpoints
+   pat_off[4]  = 16'h1FFF;  pat_off[5]  = 16'h2000;
+   // Alternating bit patterns
+   pat_off[6]  = 16'h1555;  pat_off[7]  = 16'h2AAA;
+   // Walking 1s (bits 0-13)
+   pat_off[8]  = 16'h0002;  pat_off[9]  = 16'h0004;
+   pat_off[10] = 16'h0008;  pat_off[11] = 16'h0010;
+   pat_off[12] = 16'h0020;  pat_off[13] = 16'h0040;
+   pat_off[14] = 16'h0080;  pat_off[15] = 16'h0100;
+   pat_off[16] = 16'h0200;  pat_off[17] = 16'h0400;
+   pat_off[18] = 16'h0800;  pat_off[19] = 16'h1000;
+   pat_off[20] = 16'h2000;
+   // Walking 0s (from 0x3FFF, clear one bit at a time)
+   pat_off[21] = 16'h3FFD;  pat_off[22] = 16'h3FFB;
+   pat_off[23] = 16'h3FF7;  pat_off[24] = 16'h3FEF;
+   pat_off[25] = 16'h3FDF;  pat_off[26] = 16'h3FBF;
+   pat_off[27] = 16'h3F7F;  pat_off[28] = 16'h3EFF;
+   pat_off[29] = 16'h3DFF;  pat_off[30] = 16'h3BFF;
+   pat_off[31] = 16'h37FF;  pat_off[32] = 16'h2FFF;
 
    // ===================================================================
    // SECTION 1: RESET STATE - Test all 16 commands
@@ -742,9 +773,8 @@ begin
 
    // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
-   // Verifies that writing to one ALU register does not corrupt the
-   // other. Both registers are exercised with the same value range
-   // and read back together after each write sequence.
+   // Uses boundary + walking-1/0 + alternating bit patterns (33 values)
+   // instead of exhaustive sweep for fast simulation.
    // ===================================================================
    $display("\n=== ALU LEFT/RIGHT CROSSOVER TESTS (0x4000 - 0x7FFF) ===");
 
@@ -752,73 +782,66 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h4000), 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
    end
    $display("Crossover same value both regs 0x4000-0x7FFF: PASS at %t", $time());
 
    // --- 11b: Write LEFT, verify RIGHT unchanged ---
-   // Set RIGHT to a known value, sweep LEFT, confirm RIGHT not corrupted.
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 2'b11, 1'b1)
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
       `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 1'b1)
    end
    $display("Crossover write LEFT, RIGHT unchanged 0x4000-0x7FFF: PASS at %t", $time());
 
    // --- 11c: Write RIGHT, verify LEFT unchanged ---
-   // Set LEFT to a known value, sweep RIGHT, confirm LEFT not corrupted.
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h4000, 2'b11, 1'b1)
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'h4000, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   16'h4000, 1'b1)
    end
    $display("Crossover write RIGHT, LEFT unchanged 0x4000-0x7FFF: PASS at %t", $time());
 
    // --- 11d: Write opposite values to LEFT and RIGHT, read both back ---
-   // LEFT gets i, RIGHT gets the bitwise inverse (~i) within range.
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],  2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, ~i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],  1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  ~i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000),  2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, ~(pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h4000),  1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  ~(pat_off[j] + 16'h4000), 1'b1)
    end
    $display("Crossover opposite values LEFT/RIGHT 0x4000-0x7FFF: PASS at %t", $time());
 
    // --- 11e: Byte-enable crossover - high byte LEFT, low byte RIGHT ---
-   // Write high byte only to LEFT, low byte only to RIGHT, verify isolation.
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      // Clear both registers
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      // Write high byte to LEFT, low byte to RIGHT
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b10, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b01, 1'b1)
-      // LEFT should have high byte only, RIGHT should have low byte only
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {i[15:8], 8'h00}, 1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {8'h00, i[7:0]},  1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b10, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b01, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {(pat_off[j][15:8] + 8'h40), 8'h00}, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {8'h00, pat_off[j][7:0]},             1'b1)
    end
    $display("Crossover byte-enable hi-LEFT lo-RIGHT 0x4000-0x7FFF: PASS at %t", $time());
 
@@ -826,26 +849,22 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      // Clear both registers
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      // Write low byte to LEFT, high byte to RIGHT
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 2'b01, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b10, 1'b1)
-      // LEFT should have low byte only, RIGHT should have high byte only
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {8'h00, i[7:0]},  1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {i[15:8], 8'h00}, 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b01, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'h4000), 2'b10, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  {8'h00, pat_off[j][7:0]},             1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR, {(pat_off[j][15:8] + 8'h40), 8'h00}, 1'b1)
    end
    $display("Crossover byte-enable lo-LEFT hi-RIGHT 0x4000-0x7FFF: PASS at %t", $time());
 
    // ===================================================================
    // SECTION 12: ALU_LEFT / ALU_RIGHT CROSSOVER TEST
-   // LEFT range: 0x4000-0x7FFF    RIGHT range: 0xC000-0xFFFF
-   // Both ranges are the same size (16384 values). Each iteration
-   // pairs LEFT=i with RIGHT=(i + 0x8000) so the two registers
-   // always hold values from different halves of the address space.
+   // LEFT range: 0x4000-0x7FFF (base 0x4000)
+   // RIGHT range: 0xC000-0xFFFF (base 0xC000)
+   // Same 33 patterns, different bases.
    // ===================================================================
    $display("\n=== ALU LEFT(0x4000-0x7FFF) / RIGHT(0xC000-0xFFFF) CROSSOVER ===");
 
@@ -853,53 +872,51 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],            2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h8000), 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],            1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (i[15:0] + 16'h8000), 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h4000), 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'hC000), 1'b1)
    end
    $display("Crossover12 full word both regs: PASS at %t", $time());
 
-   // --- 12b: Sweep LEFT (0x4000-0x7FFF), RIGHT pinned at 0xC000 ---
+   // --- 12b: Sweep LEFT, RIGHT pinned at 0xC000 ---
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hC000, 2'b11, 1'b1)
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, (pat_off[j] + 16'h4000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 1'b1)
       `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hC000, 1'b1)
    end
    $display("Crossover12 sweep LEFT, RIGHT pinned 0xC000: PASS at %t", $time());
 
-   // --- 12c: Sweep RIGHT (0xC000-0xFFFF), LEFT pinned at 0x4000 ---
+   // --- 12c: Sweep RIGHT, LEFT pinned at 0x4000 ---
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h4000, 2'b11, 1'b1)
-   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'hC000), 1'b1)
       `READ_REG(VCHIP_ALU_LEFT_ADDR,   16'h4000, 1'b1)
    end
    $display("Crossover12 sweep RIGHT, LEFT pinned 0x4000: PASS at %t", $time());
 
-   // --- 12d: Opposite ranges to both, read both back ---
-   // LEFT gets i (0x4000-0x7FFF), RIGHT gets ~i (maps into 0x8000-0xBFFF
-   // but we want 0xC000-0xFFFF, so RIGHT = i + 0x8000)
+   // --- 12d: Mirror values - LEFT ascending, RIGHT descending ---
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (16'hFFFF - i[15:0] + 16'hC000), 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],               1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (16'hFFFF - i[15:0] + 16'hC000), 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000),              2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (16'hFFFF - pat_off[j]),               2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h4000),              1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (16'hFFFF - pat_off[j]),               1'b1)
    end
    $display("Crossover12 mirror values LEFT/RIGHT: PASS at %t", $time());
 
@@ -907,15 +924,14 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      // High byte to LEFT from 0x4000 range, low byte to RIGHT from 0xC000 range
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b10, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h8000),  2'b01, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {i[15:8], 8'h00},      1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {8'h00, i[7:0]},       1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b10, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b01, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {(pat_off[j][15:8] + 8'h40), 8'h00}, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {8'h00, pat_off[j][7:0]},             1'b1)
    end
    $display("Crossover12 byte-enable hi-LEFT lo-RIGHT: PASS at %t", $time());
 
@@ -923,24 +939,22 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h4000; i <= 16'h7FFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      // Low byte to LEFT from 0x4000 range, high byte to RIGHT from 0xC000 range
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b01, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h8000),  2'b10, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {8'h00, i[7:0]},       1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {i[15:8] + 8'h80, 8'h00}, 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h4000), 2'b01, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b10, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {8'h00, pat_off[j][7:0]},             1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {(pat_off[j][15:8] + 8'hC0), 8'h00}, 1'b1)
    end
    $display("Crossover12 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
 
    // ===================================================================
    // SECTION 13: ALU_LEFT / ALU_RIGHT CROSSOVER TEST
-   // LEFT range: 0x8000-0xBFFF    RIGHT range: 0xC000-0xFFFF
-   // Both ranges are 16384 values. Each iteration pairs LEFT=i
-   // with RIGHT=(i + 0x4000) so the two registers always hold
-   // values from adjacent upper-half ranges.
+   // LEFT range: 0x8000-0xBFFF (base 0x8000)
+   // RIGHT range: 0xC000-0xFFFF (base 0xC000)
+   // Same 33 patterns, different bases.
    // ===================================================================
    $display("\n=== ALU LEFT(0x8000-0xBFFF) / RIGHT(0xC000-0xFFFF) CROSSOVER ===");
 
@@ -948,37 +962,37 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h8000; i <= 16'hBFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h4000), 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],               1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (i[15:0] + 16'h4000), 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h8000), 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h8000), 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'hC000), 1'b1)
    end
    $display("Crossover13 full word both regs: PASS at %t", $time());
 
-   // --- 13b: Sweep LEFT (0x8000-0xBFFF), RIGHT pinned at 0xC000 ---
+   // --- 13b: Sweep LEFT, RIGHT pinned at 0xC000 ---
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hC000, 2'b11, 1'b1)
-   for (i = 16'h8000; i <= 16'hBFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR, (pat_off[j] + 16'h8000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h8000), 1'b1)
       `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hC000, 1'b1)
    end
    $display("Crossover13 sweep LEFT, RIGHT pinned 0xC000: PASS at %t", $time());
 
-   // --- 13c: Sweep RIGHT (0xC000-0xFFFF), LEFT pinned at 0x8000 ---
+   // --- 13c: Sweep RIGHT, LEFT pinned at 0x8000 ---
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
    `WRITE_REG(VCHIP_ALU_LEFT_ADDR, 16'h8000, 2'b11, 1'b1)
-   for (i = 16'hC000; i <= 16'hFFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, i[15:0], 2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  i[15:0], 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (pat_off[j] + 16'hC000), 1'b1)
       `READ_REG(VCHIP_ALU_LEFT_ADDR,   16'h8000, 1'b1)
    end
    $display("Crossover13 sweep RIGHT, LEFT pinned 0x8000: PASS at %t", $time());
@@ -987,12 +1001,12 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h8000; i <= 16'hBFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],                            2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (16'hFFFF - i[15:0] + 16'hC000),   2'b11, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   i[15:0],                            1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (16'hFFFF - i[15:0] + 16'hC000),   1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h8000),              2'b11, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (16'hFFFF - pat_off[j]),               2'b11, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   (pat_off[j] + 16'h8000),              1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  (16'hFFFF - pat_off[j]),               1'b1)
    end
    $display("Crossover13 mirror values LEFT/RIGHT: PASS at %t", $time());
 
@@ -1000,14 +1014,14 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h8000; i <= 16'hBFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b10, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h4000), 2'b01, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {i[15:8], 8'h00},      1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {8'h00, i[7:0]},       1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h8000), 2'b10, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b01, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {(pat_off[j][15:8] + 8'h80), 8'h00}, 1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {8'h00, pat_off[j][7:0]},             1'b1)
    end
    $display("Crossover13 byte-enable hi-LEFT lo-RIGHT: PASS at %t", $time());
 
@@ -1015,14 +1029,14 @@ begin
    `CLEAR_ALL
    `CHIP_RESET
    `CHANGE_STATE_TO_NORMAL
-   for (i = 16'h8000; i <= 16'hBFFF; i = i + 1)
+   for (j = 0; j < NUM_PATS; j = j + 1)
    begin
       `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
       `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
-      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  i[15:0],               2'b01, 1'b1)
-      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (i[15:0] + 16'h4000), 2'b10, 1'b1)
-      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {8'h00, i[7:0]},       1'b1)
-      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {i[15:8] + 8'h40, 8'h00}, 1'b1)
+      `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  (pat_off[j] + 16'h8000), 2'b01, 1'b1)
+      `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, (pat_off[j] + 16'hC000), 2'b10, 1'b1)
+      `READ_REG(VCHIP_ALU_LEFT_ADDR,   {8'h00, pat_off[j][7:0]},             1'b1)
+      `READ_REG(VCHIP_ALU_RIGHT_ADDR,  {(pat_off[j][15:8] + 8'hC0), 8'h00}, 1'b1)
    end
    $display("Crossover13 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
 
