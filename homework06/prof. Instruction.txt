@@ -1,0 +1,58 @@
+FIRST SPECIAL NOTE:
+
+When in the homework06 directory, execute this command. Note the name change!
+
+cp ../homework05/top_verichip5.sv top_verichip6.sv
+
+and also copy any include files you may have created:
+
+cp ../homework05/*.vh .
+
+Then edit top_verichip6.sv to make TWO changes:
+
+1. Change the name of the module from top_verichip5 to top_verichip6.
+
+2. Change the module name of verichip5 to verichip6:
+
+verichip6 verichip
+
+By doing the above, you'll have all your macros from homework05. At this point, you can delete, or keep, the code you used for homework05 and add the new code for homework06.
+
+SECOND SPECIAL NOTE:
+
+When testing, alu_left, alu_right, and alu_out should have DIFFERENT values prior to each command.
+
+THIRD SPECIAL NOTE:
+
+You only need to test the ALU in the Reset and Normal states as we have already proven that writes to the Command Register can't be done in the Error or Export Violation states.
+
+FOURTH SPECIAL NOTE:
+
+After each command, you must check that the alu_left, alu_right, and alu_out values are correct. You must also explicitly verify that the state either did not change or did change to the appropriate state.
+
+FIFTH SPECIAL NOTE:
+
+Remember that you need a clock cycle between writing the command and checking the results to allow the command to execute. And replace the #5 finish at the end with:
+
+   wait(clk == 1'b0);   // MUST LEAVE SO GRADING WORKS!
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   $finish;
+
+SIXTH SPECIAL NOTE:
+
+We'll discuss more of what you have to do in class.
+
+Meaning of the feedback:
+
+reset state check failed: test all 16 commands in the reset state. Verify no change.
+
+normal state check failed: test all 16 commands in the normal state. Verify legal commands get correct answers, verify illegal commands go to error state. The export_disable signal should be 0.
+
+track export check failed: test all 16 commands with export_disable asserted. Verify legal commands get correct answers, verify illegal commands go to export violation state.
+
+overflow violation check failed: test for overflow for both addition and subtraction with export_disable asserted and with export_disable negated.
+
+track valid check failed: test all 16 commands in the normal state with valid = 0 to ensure nothing is done.
+
+track same violation check failed: verifies that EVERY time the valid bit is 1, that alu_left, alu_right, and alu_out are all different. That is, they must have 3 different values when valid is asserted. Once the math command has executed, it is ok if two of these have the same value. The value is expected to be 0. If the value is reported, it is a count of the number of times this check failed. That is, if the count is 00010, this means there were two occasions where the check failed. Use waves to find these!
