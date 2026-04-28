@@ -1309,6 +1309,175 @@ begin
    $display("Reset maroon=0 gold=1 -> Normal: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 10.11: CONFIGURATION REGISTER (VCHIP_ADDR_CON = 0x0C) TESTS
+   // con_reg = {6'h0, int2_en, int1_en, 8'h0}
+   // Only bits 9 (int2_en) and 8 (int1_en) are writable.
+   // Write requires: chip_select=1, rw_=0, address=0x0C, byte_en[1]=1.
+   // Behavior: reset->0, EXP->0, ERR->hold, NORM->writable.
+   // ===================================================================
+   $display("\n=== CONFIGURATION REGISTER TESTS ===");
+
+   // --- 10.11a: Reset value should be 0x0000 ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config reset value 0x0000: PASS at %t", $time());
+
+   // --- 10.11b: Write all 4 combinations of int1_en/int2_en ---
+   // int1_en=0, int2_en=0 -> con_reg = 0x0000
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config int1=0 int2=0: PASS at %t", $time());
+
+   // int1_en=1, int2_en=0 -> con_reg = 0x0100
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0100, 1'b1)
+   $display("Config int1=1 int2=0: PASS at %t", $time());
+
+   // int1_en=0, int2_en=1 -> con_reg = 0x0200
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0200, 1'b1)
+   $display("Config int1=0 int2=1: PASS at %t", $time());
+
+   // int1_en=1, int2_en=1 -> con_reg = 0x0300
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config int1=1 int2=1: PASS at %t", $time());
+
+   // --- 10.11c: byte_en=2'b10 (high byte only) should update ---
+   // int enables are in the high byte (bits 9:8)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b10, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config byte_en=10 updates: PASS at %t", $time());
+
+   // --- 10.11d: byte_en=2'b01 (low byte only) should NOT update ---
+   // int enables require byte_en[1]=1 to write
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b01, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config byte_en=01 no update: PASS at %t", $time());
+
+   // --- 10.11e: byte_en=2'b00 should NOT update ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b00, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config byte_en=00 no update: PASS at %t", $time());
+
+   // --- 10.11f: chip_select=0 should NOT update ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b0)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config chip_select=0 no update: PASS at %t", $time());
+
+   // --- 10.11g: Read-only bits - writing junk to unused bits ignored ---
+   // Write 0xFFFF, only bits 9:8 should appear in readback
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'hFFFF, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config write 0xFFFF reads 0x0300: PASS at %t", $time());
+
+   // Write 0x0000, both enables cleared
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config write 0x0000 reads 0x0000: PASS at %t", $time());
+
+   // --- 10.11h: Config register holds value in ERROR state ---
+   // Set both enables, then go to ERROR, verify they hold
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   // Transition to ERROR via bad command
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   // Config should be frozen at 0x0300
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config holds in Error (0x0300): PASS at %t", $time());
+
+   // Same test with only int1_en set
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0100, 1'b1)
+   $display("Config holds in Error (0x0100): PASS at %t", $time());
+
+   // --- 10.11i: Writes to config register are ignored in ERROR state ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   // Try to clear enables while in ERROR - should be ignored
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config write ignored in Error: PASS at %t", $time());
+
+   // --- 10.11j: Config register cleared on EXP state transition ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   // Transition to EXPORT
+   `CHANGE_STATE_TO_EXP
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_EXPORT, 1'b1)
+   // Config should be cleared to 0x0000
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config cleared on Export: PASS at %t", $time());
+
+   // --- 10.11k: Config not writable in RESET state ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `READ_REG(VCHIP_CON_ADDR, 16'h0000, 1'b1)
+   $display("Config not writable in Reset: PASS at %t", $time());
+
+   // --- 10.11l: Address decoding - writing to other addresses
+   //             should NOT affect config register ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   // Write to every other register address
+   `WRITE_REG(VCHIP_VER_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_OUT_ADDR,   16'h0000, 2'b11, 1'b1)
+   // Config should still be 0x0300
+   `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
+   $display("Config unaffected by other addr writes: PASS at %t", $time());
+
+   // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
    // Uses boundary + walking-1/0 + alternating bit patterns (33 values)
    // instead of exhaustive sweep for fast simulation.
