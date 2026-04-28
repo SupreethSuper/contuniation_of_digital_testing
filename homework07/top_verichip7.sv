@@ -1170,6 +1170,145 @@ begin
    $display("Crossover10.9 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 10.10: RESET -> ERROR STATE TRANSITION TESTS
+   // There is NO direct RESET -> ERROR transition in the state machine.
+   // From RESET, only !maroon && gold moves to NORM; everything else
+   // stays in RESET. These tests verify:
+   //   (A) Error-causing actions in RESET do NOT jump to ERROR.
+   //   (B) The correct path RESET -> NORM -> ERROR works.
+   // ===================================================================
+   $display("\n=== RESET -> ERROR STATE TRANSITION TESTS ===");
+
+   // --- 10.10a: Bad command (cmd 8-15) in RESET stays in RESET ---
+   for (i = 8; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      // Issue illegal command while still in RESET
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      // State must remain RESET, NOT jump to ERROR
+      `CHECK_ALU_AND_STATE(TEST_LEFT, TEST_RIGHT, 16'h0000, STA_RESET)
+      $display("Reset bad cmd %0d stays Reset: PASS at %t", i, $time());
+   end
+
+   // --- 10.10b: Add overflow in RESET stays in RESET ---
+   // 0x7FFF + 0x0001 = 0x8000 (pos+pos=neg) would overflow in NORM
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   $display("Reset add overflow stays Reset: PASS at %t", $time());
+
+   // --- 10.10c: Sub overflow in RESET stays in RESET ---
+   // 0x8000 - 0x0001 = 0x7FFF (neg-pos=pos) would overflow in NORM
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   $display("Reset sub overflow stays Reset: PASS at %t", $time());
+
+   // --- 10.10d: Multiple error attempts in RESET, then transition
+   //             RESET -> NORM -> ERROR via bad command ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   // Fire several bad commands while in RESET - all ignored
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000A), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   // Now transition to NORM
+   `CHANGE_STATE_TO_NORMAL
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   // Now issue bad command -> should go to ERROR
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("Reset(ignored) -> Normal -> Error: PASS at %t", $time());
+
+   // --- 10.10e: RESET -> NORM -> ERROR via add overflow ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("Reset -> Normal -> Error (add overflow): PASS at %t", $time());
+
+   // --- 10.10f: RESET -> NORM -> ERROR via sub overflow ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("Reset -> Normal -> Error (sub overflow): PASS at %t", $time());
+
+   // --- 10.10g: RESET -> NORM -> ERROR via each bad command (8-15) ---
+   for (i = 8; i < 16; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(TEST_LEFT, TEST_RIGHT)
+      `CHANGE_STATE_TO_NORMAL
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+      $display("Reset -> Normal -> Error (bad cmd %0d): PASS at %t", i, $time());
+   end
+
+   // --- 10.10h: Verify maroon/gold inputs do NOT cause ERROR from RESET ---
+   // maroon=1, gold=0 keeps RESET (this combo recovers from ERROR, not RESET)
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   $display("Reset maroon=1 gold=0 stays Reset: PASS at %t", $time());
+
+   // maroon=1, gold=1 keeps RESET
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   $display("Reset maroon=1 gold=1 stays Reset: PASS at %t", $time());
+
+   // maroon=0, gold=0 keeps RESET
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   maroon <= 1'b0;
+   gold   <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   $display("Reset maroon=0 gold=0 stays Reset: PASS at %t", $time());
+
+   // maroon=0, gold=1 -> transitions to NORM (only valid exit from RESET)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("Reset maroon=0 gold=1 -> Normal: PASS at %t", $time());
+
+   // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
    // Uses boundary + walking-1/0 + alternating bit patterns (33 values)
    // instead of exhaustive sweep for fast simulation.
