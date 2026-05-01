@@ -2227,6 +2227,455 @@ begin
    $display("cs=0 rw=read all 128 addrs data_out=0, regs intact: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 10.14: BUS CROSSOVER - cs=0 (not selected), rw_=1 (read),
+   //                byte_en = {2'b10 (byte1), 2'b01 (byte0), 2'b00 (neither)}
+   // When chip_select=0, data_out must be 0 and no register may change,
+   // regardless of byte_en setting during a read.
+   // ===================================================================
+   $display("\n=== BUS CROSSOVER: cs=0, rw=read, byte_en={byte1,byte0,neither} TESTS ===");
+
+   // Pre-load all writable registers with known non-zero values
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR,       16'h0300, 2'b11, 1'b1)   // int1_en=1, int2_en=1
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)                                    // alu_out = 0xBEEF+0xCAFE
+   `WAIT_CYCLE
+
+   // Verify baseline
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.14 Baseline values loaded: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP A: cs=0, rw_=1, byte_en=2'b10 (byte1 only)
+   // data_out must be 0, all registers unchanged
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b1;
+   byte_en     <= 2'b10;
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.14a cs=0 rw=read byte_en=10: data_out=0, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP B: cs=0, rw_=1, byte_en=2'b01 (byte0 only)
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b1;
+   byte_en     <= 2'b01;
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.14b cs=0 rw=read byte_en=01: data_out=0, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP C: cs=0, rw_=1, byte_en=2'b00 (neither byte)
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b1;
+   byte_en     <= 2'b00;
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.14c cs=0 rw=read byte_en=00: data_out=0, regs intact: PASS at %t", $time());
+
+   // ===================================================================
+   // SECTION 10.15: BUS CROSSOVER - cs=0 (not selected), rw_=0 (write),
+   //                byte_en = {2'b10 (byte1), 2'b01 (byte0), 2'b00 (neither)}
+   // When chip_select=0, writes must be ignored - no register may change,
+   // data_out must be 0, regardless of rw_ or byte_en setting.
+   // ===================================================================
+   $display("\n=== BUS CROSSOVER: cs=0, rw=write, byte_en={byte1,byte0,neither} TESTS ===");
+
+   // Pre-load all writable registers with known non-zero values
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR,       16'h0300, 2'b11, 1'b1)   // int1_en=1, int2_en=1
+   `WRITE_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)                                    // alu_out = 0xBEEF+0xCAFE
+   `WAIT_CYCLE
+
+   // Verify baseline
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15 Baseline values loaded: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP A: cs=0, rw_=0 (write), byte_en=2'b10 (byte1 only)
+   // Attempt to write 0xFFFF to every writable register with cs=0
+   // No register should change, data_out should be 0
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b0;       // write mode
+   byte_en     <= 2'b10;
+   data_in     <= 16'hFFFF;   // attempt to overwrite with all 1s
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted by the write attempt
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15a cs=0 rw=write byte_en=10: writes ignored, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP B: cs=0, rw_=0 (write), byte_en=2'b01 (byte0 only)
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b0;       // write mode
+   byte_en     <= 2'b01;
+   data_in     <= 16'hFFFF;
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15b cs=0 rw=write byte_en=01: writes ignored, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP C: cs=0, rw_=0 (write), byte_en=2'b00 (neither byte)
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b0;       // write mode
+   byte_en     <= 2'b00;
+   data_in     <= 16'hFFFF;
+
+   address <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_CMD_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_STA_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_ALU_OUT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   address <= VCHIP_VER_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify no register was corrupted
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15c cs=0 rw=write byte_en=00: writes ignored, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP D: cs=0, rw_=0 (write), byte_en=2'b10, different data patterns
+   // Try writing specific non-trivial values to verify isolation
+   // -----------------------------------------------------------------
+
+   // Attempt to write 0x1234 to LEFT, 0x5678 to RIGHT, 0x0000 to CON
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b0;
+   byte_en     <= 2'b10;
+   data_in     <= 16'h1234;
+   address     <= VCHIP_ALU_LEFT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   data_in     <= 16'h5678;
+   address     <= VCHIP_ALU_RIGHT_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   data_in     <= 16'h0000;
+   address     <= VCHIP_CON_ADDR;
+   wait(clk == 1'b1);
+   `CHECK_VAL(16'h0000)
+   wait(clk == 1'b0);
+
+   `CLEAR_BUS
+
+   // Verify registers still hold original values
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15d cs=0 rw=write varied data_in: writes ignored, regs intact: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP E: cs=0, rw_=0 (write), rapid address cycling
+   // Cycle through all 128 addresses with write + data_in=0xFFFF
+   // Verify no side-effects
+   // -----------------------------------------------------------------
+
+   wait(clk == 1'b0);
+   chip_select <= 1'b0;
+   rw_         <= 1'b0;
+   byte_en     <= 2'b11;
+   data_in     <= 16'hFFFF;
+
+   for (i = 0; i < 128; i = i + 1)
+   begin
+      address <= i[6:0];
+      wait(clk == 1'b1);
+      `CHECK_VAL(16'h0000)
+      wait(clk == 1'b0);
+   end
+   `CLEAR_BUS
+
+   // Final verification - all registers still intact
+   `READ_REG(VCHIP_STA_ADDR,       STA_NORMAL,  1'b1)
+   `READ_REG(VCHIP_CON_ADDR,       16'h0300,    1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR,  16'hBEEF,    1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hCAFE,    1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR,   16'h89ED,    1'b1)
+   $display("10.15e cs=0 rw=write all 128 addrs: writes ignored, regs intact: PASS at %t", $time());
+
+   // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
    // Uses boundary + walking-1/0 + alternating bit patterns (33 values)
    // instead of exhaustive sweep for fast simulation.
