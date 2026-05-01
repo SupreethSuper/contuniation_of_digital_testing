@@ -181,8 +181,20 @@ covergroup bus_interface @ ( posedge clk );
       bins alu = { VCHIP_ADDR_ALU };
    }
 
+   // Address coverpoint without iff guard so cs=0 cross bins can be hit
+   cp_address_all: coverpoint address
+   {
+      bins ver = { VCHIP_ADDR_VER };
+      bins sta = { VCHIP_ADDR_STA };
+      bins cmd = { VCHIP_ADDR_CMD };
+      bins con = { VCHIP_ADDR_CON };
+      bins lft = { VCHIP_ADDR_LFT };
+      bins rgt = { VCHIP_ADDR_RGT };
+      bins alu = { VCHIP_ADDR_ALU };
+   }
+
    cx_cs_rw_be:  cross cp_cs, cp_rw, cp_bytes;
-   cx_cs_rw_add: cross cp_cs, cp_rw, cp_address;
+   cx_cs_rw_add: cross cp_cs, cp_rw, cp_address_all;
 
 endgroup // bus_interface
 bus_interface bus_interface_i = new();
