@@ -3701,6 +3701,172 @@ begin
    $display("16e export_dis=1 valid=0 cmd=0xF(>2): bad_exp_cmd=0, NORM: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 17: CROSSOVER - export_dis x valid x (cmd > LAST_EXP_CMD)
+   // bad_exp_cmd = export_dis && valid && (cmd > VCHIP_LAST_EXP_CMD)
+   //
+   // Combo A: export_dis=0, valid=1, cmd>2  -> bad_exp_cmd = 0&&1&&1 = 0
+   //          No EXP transition. cmd 3-7 execute normally.
+   // Combo B: export_dis=1, valid=0, cmd>2  -> bad_exp_cmd = 1&&0&&1 = 0
+   //          No EXP transition. valid=0 blocks everything.
+   // ===================================================================
+   $display("\n=== CROSSOVER: export_dis x valid x cmd>LAST_EXP_CMD TESTS ===");
+
+   // -----------------------------------------------------------------
+   // COMBO A: export_dis=0, valid=1, cmd>2
+   // bad_exp_cmd = 0 -> no EXP transition
+   // With export_dis=0, cmds 3-7 are legal and should execute normally.
+   // -----------------------------------------------------------------
+
+   // A1: export_dis=0, valid=1, cmd=3 (MVL, boundary >2)
+   //     MVL moves alu_out to alu_left
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   `MATH_CMD(VCHIP_ALU_ADD)            // alu_out = 0x000F
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)            // cmd=3: move alu_out -> alu_left
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h000F, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17a1 exp_dis=0 valid=1 cmd=3(MVL): executes, NORM: PASS at %t", $time());
+
+   // A2: export_dis=0, valid=1, cmd=4 (MVR)
+   //     MVR moves alu_out to alu_right
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   `MATH_CMD(VCHIP_ALU_ADD)            // alu_out = 0x000F
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVR)            // cmd=4: move alu_out -> alu_right
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h000F, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17a2 exp_dis=0 valid=1 cmd=4(MVR): executes, NORM: PASS at %t", $time());
+
+   // A3: export_dis=0, valid=1, cmd=5 (SWA)
+   //     SWA swaps alu_left and alu_right
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   `MATH_CMD(VCHIP_ALU_SWA)            // cmd=5: swap left<->right
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0005, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h000A, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17a3 exp_dis=0 valid=1 cmd=5(SWA): executes, NORM: PASS at %t", $time());
+
+   // A4: export_dis=0, valid=1, cmd=6 (SHL)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SHL)            // cmd=6: left << right
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0014, 1'b1)   // 0xA << 1 = 0x14
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17a4 exp_dis=0 valid=1 cmd=6(SHL): executes, NORM: PASS at %t", $time());
+
+   // A5: export_dis=0, valid=1, cmd=7 (SHR, max legal >2)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SHR)            // cmd=7: left >> right
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0005, 1'b1)   // 0xA >> 1 = 0x5
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17a5 exp_dis=0 valid=1 cmd=7(SHR): executes, NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // COMBO B: export_dis=1, valid=0, cmd>2
+   // bad_exp_cmd = 0 because valid=0 blocks it
+   // No command executes, state stays NORMAL
+   // -----------------------------------------------------------------
+
+   // B1: export_dis=1, valid=0 (data_in[15]=0), cmd=3 (boundary >2)
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   // data_in[15]=0 -> valid=0
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0003, 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+   $display("17b1 exp_dis=1 valid=0 cmd=3(>2): no exec, NORM: PASS at %t", $time());
+
+   // B2: export_dis=1, valid=0 (data_in[15]=0), cmd=5 (SWA)
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0005, 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h000A, 1'b1)   // not swapped
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0005, 1'b1)   // not swapped
+   $display("17b2 exp_dis=1 valid=0 cmd=5(>2): no exec, NORM: PASS at %t", $time());
+
+   // B3: export_dis=1, valid=0 (data_in[15]=0), cmd=7 (SHR, max legal >2)
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0001)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0007, 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)   // no shift happened
+   $display("17b3 exp_dis=1 valid=0 cmd=7(>2): no exec, NORM: PASS at %t", $time());
+
+   // B4: export_dis=1, valid=0 (byte_en[1]=0), cmd=5 (SWA)
+   //     Another way valid=0: data_in[15]=1 but byte_en[1]=0
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   // data_in[15]=1 but byte_en=2'b01 -> valid=0
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8005, 2'b01, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h000A, 1'b1)
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0005, 1'b1)
+   $display("17b4 exp_dis=1 valid=0(be=01) cmd=5(>2): no exec, NORM: PASS at %t", $time());
+
+   // B5: export_dis=1, valid=0 (data_in[15]=0), cmd=0xF (>7, also bad_cmd)
+   //     Even with max illegal cmd, valid=0 prevents everything
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h000F, 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("17b5 exp_dis=1 valid=0 cmd=0xF(>2): no exec, NORM: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
