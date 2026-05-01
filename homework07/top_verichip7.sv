@@ -1317,6 +1317,7 @@ begin
    // ===================================================================
    $display("\n=== CONFIGURATION REGISTER TESTS ===");
 
+
    // --- 10.11a: Reset value should be 0x0000 ---
    `CLEAR_ALL
    `CHIP_RESET
@@ -1476,6 +1477,450 @@ begin
    // Config should still be 0x0300
    `READ_REG(VCHIP_CON_ADDR, 16'h0300, 1'b1)
    $display("Config unaffected by other addr writes: PASS at %t", $time());
+
+   // ===================================================================
+   // SECTION 10.12: INTERRUPT 1 / INTERRUPT 2 CROSSOVER TESTS
+   // int1 sets when: int1_en && state==NORM && valid && (bad_cmd||overflow)
+   // int2 sets when: int2_en && state==NORM && valid && bad_exp_cmd
+   // Both clear by writing 1 to their bit in status register (byte_en[1]).
+   // Status reg: {6'h0, int2, int1, 4'h0, state}
+   //   int1 = bit 8,  int2 = bit 9
+   // ===================================================================
+   $display("\n=== INTERRUPT 1 / INTERRUPT 2 CROSSOVER TESTS ===");
+
+   // -----------------------------------------------------------------
+   // GROUP A: RESET BEHAVIOR
+   // -----------------------------------------------------------------
+
+   // --- 10.12a1: Both interrupts clear after reset ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `READ_REG(VCHIP_STA_ADDR, 16'h0000, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupts not 0 after reset at %t", $time());
+   $display("Both interrupts 0 after reset: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP B: ENABLE COMBINATIONS - int1 trigger (bad_cmd, no export)
+   // Trigger: cmd=0xF (bad_cmd) without export_disable -> int1 only
+   // State goes to ERROR, status bit 8 = int1
+   // -----------------------------------------------------------------
+
+   // --- 10.12b1: int1_en=0, int2_en=0 -> neither fires ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired with enables=00 at %t", $time());
+   $display("bad_cmd en=00 neither fires: PASS at %t", $time());
+
+   // --- 10.12b2: int1_en=1, int2_en=0 -> int1 fires ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be 0 at %t", $time());
+   $display("bad_cmd en=10 int1 fires: PASS at %t", $time());
+
+   // --- 10.12b3: int1_en=0, int2_en=1 -> neither fires (int2 needs bad_exp_cmd) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired unexpectedly at %t", $time());
+   $display("bad_cmd en=01 neither fires (no exp): PASS at %t", $time());
+
+   // --- 10.12b4: int1_en=1, int2_en=1 -> int1 fires only (no export) ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be 0 at %t", $time());
+   $display("bad_cmd en=11 int1 only (no exp): PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP C: ENABLE COMBINATIONS - int2 trigger (bad_exp_cmd, cmd 3-7)
+   // Trigger: export_disable=1, cmd=5 (SWA, > LAST_EXP_CMD=2)
+   // bad_exp_cmd=1, bad_cmd=0 -> int2 only, state goes to EXP
+   // -----------------------------------------------------------------
+
+   // --- 10.12c1: int1_en=0, int2_en=0 -> neither fires ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired with enables=00 at %t", $time());
+   $display("exp_cmd en=00 neither fires: PASS at %t", $time());
+
+   // --- 10.12c2: int1_en=1, int2_en=0 -> neither fires (int1 needs bad_cmd) ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired unexpectedly at %t", $time());
+   $display("exp_cmd en=10 neither fires (no bad_cmd): PASS at %t", $time());
+
+   // --- 10.12c3: int1_en=0, int2_en=1 -> int2 fires ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+   if (interrupt_2 !== 1'b1)
+      $display("bad: int2 should be 1 at %t", $time());
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should be 0 at %t", $time());
+   $display("exp_cmd en=01 int2 fires: PASS at %t", $time());
+
+   // --- 10.12c4: int1_en=1, int2_en=1 -> int2 fires only (cmd 5 is not bad_cmd) ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+   if (interrupt_2 !== 1'b1)
+      $display("bad: int2 should be 1 at %t", $time());
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should be 0 at %t", $time());
+   $display("exp_cmd en=11 int2 only (cmd<=7): PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP D: BOTH INTERRUPTS TRIGGERED SIMULTANEOUSLY
+   // Trigger: export_disable=1, cmd=0xF (> 7, so bad_cmd=1 AND bad_exp_cmd=1)
+   // State goes to EXP (checked first in FSM)
+   // -----------------------------------------------------------------
+
+   // --- 10.12d1: Both enabled, both fire simultaneously ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b1)
+      $display("bad: int2 should be 1 at %t", $time());
+   $display("Both fire (exp+bad_cmd): PASS at %t", $time());
+
+   // --- 10.12d2: int1_en=1 only, cmd=0xF with export -> int1 fires, int2 doesn't ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0108, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be 0 at %t", $time());
+   $display("cmd=F exp en=10 int1 only: PASS at %t", $time());
+
+   // --- 10.12d3: int2_en=1 only, cmd=0xF with export -> int2 fires, int1 doesn't ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should be 0 at %t", $time());
+   if (interrupt_2 !== 1'b1)
+      $display("bad: int2 should be 1 at %t", $time());
+   $display("cmd=F exp en=01 int2 only: PASS at %t", $time());
+
+   // --- 10.12d4: Neither enabled, cmd=0xF with export -> neither fires ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0000, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired with enables=00 at %t", $time());
+   $display("cmd=F exp en=00 neither fires: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP E: OVERFLOW TRIGGERS INT1 (not int2)
+   // -----------------------------------------------------------------
+
+   // --- 10.12e1: Add overflow, int1_en=1 -> int1 fires ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be 0 at %t", $time());
+   $display("Add overflow int1 fires: PASS at %t", $time());
+
+   // --- 10.12e2: Sub overflow, int1_en=1 -> int1 fires ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should be 1 at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be 0 at %t", $time());
+   $display("Sub overflow int1 fires: PASS at %t", $time());
+
+   // --- 10.12e3: Add overflow, int1_en=0 -> int1 does NOT fire ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should be 0 at %t", $time());
+   $display("Add overflow int1_en=0 no fire: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP F: CLEARING INTERRUPTS - CROSSOVER
+   // Both interrupts set, then selectively clear one at a time
+   // -----------------------------------------------------------------
+
+   // --- 10.12f1: Both set, clear int1 only (write bit 8 to status) ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   // Both should be set
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   // Clear int1 only (write 1 to bit 8 of status)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b11, 1'b1)
+   // int1 cleared, int2 still set
+   `READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should be cleared at %t", $time());
+   if (interrupt_2 !== 1'b1)
+      $display("bad: int2 should still be set at %t", $time());
+   $display("Clear int1 only, int2 remains: PASS at %t", $time());
+
+   // --- 10.12f2: Both set, clear int2 only (write bit 9 to status) ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   // Clear int2 only (write 1 to bit 9 of status)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b11, 1'b1)
+   // int2 cleared, int1 still set
+   `READ_REG(VCHIP_STA_ADDR, 16'h0108, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should still be set at %t", $time());
+   if (interrupt_2 !== 1'b0)
+      $display("bad: int2 should be cleared at %t", $time());
+   $display("Clear int2 only, int1 remains: PASS at %t", $time());
+
+   // --- 10.12f3: Both set, clear both simultaneously (write bits 9:8) ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   // Clear both (write 1 to bits 9 and 8)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0300, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: both should be cleared at %t", $time());
+   $display("Clear both simultaneously: PASS at %t", $time());
+
+   // --- 10.12f4: Both set, clear int1 then int2 sequentially ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   // Clear int1 first
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0208, 1'b1)
+   // Then clear int2
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: both should be cleared at %t", $time());
+   $display("Clear int1 then int2 sequential: PASS at %t", $time());
+
+   // --- 10.12f5: Both set, clear int2 then int1 sequentially ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0308, 1'b1)
+   // Clear int2 first
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0200, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0108, 1'b1)
+   // Then clear int1
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b11, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0008, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: both should be cleared at %t", $time());
+   $display("Clear int2 then int1 sequential: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP G: CLEAR REQUIRES byte_en[1]
+   // -----------------------------------------------------------------
+
+   // --- 10.12g1: Clear attempt with byte_en=2'b01 -> should NOT clear ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   // Try clearing with byte_en=01 (low byte only)
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b01, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should NOT have cleared at %t", $time());
+   $display("Clear with byte_en=01 fails: PASS at %t", $time());
+
+   // --- 10.12g2: Clear attempt with byte_en=2'b00 -> should NOT clear ---
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b00, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0102, 1'b1)
+   if (interrupt_1 !== 1'b1)
+      $display("bad: int1 should NOT have cleared at %t", $time());
+   $display("Clear with byte_en=00 fails: PASS at %t", $time());
+
+   // --- 10.12g3: Clear with byte_en=2'b10 -> should clear ---
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0100, 2'b10, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, 16'h0002, 1'b1)
+   if (interrupt_1 !== 1'b0)
+      $display("bad: int1 should have cleared at %t", $time());
+   $display("Clear with byte_en=10 works: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP H: VALID COMMANDS DO NOT TRIGGER INTERRUPTS
+   // -----------------------------------------------------------------
+
+   // --- 10.12h1: Valid add (no overflow), both enables on -> no interrupts ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h0001, 16'h0002)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired on valid cmd at %t", $time());
+   $display("Valid add no interrupts: PASS at %t", $time());
+
+   // --- 10.12h2: Valid sub (no overflow), both enables on -> no interrupts ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `SETUP_ALU(16'h0005, 16'h0002)
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: interrupt fired on valid cmd at %t", $time());
+   $display("Valid sub no interrupts: PASS at %t", $time());
+
+   // --- 10.12h3: All valid commands (0-7) with both enables, no export ---
+   for (i = 0; i < 8; i = i + 1)
+   begin
+      `CLEAR_ALL
+      `CHIP_RESET
+      `SETUP_ALU(16'h0001, 16'h0001)
+      `CHANGE_STATE_TO_NORMAL
+      `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+      `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | i[15:0]), 2'b11, 1'b1)
+      `WAIT_CYCLE
+      if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+         $display("bad: interrupt on valid cmd %0d at %t", i, $time());
+   end
+   $display("Valid cmds 0-7 no interrupts: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // GROUP I: INTERRUPT OUTPUT PINS MATCH REGISTER
+   // -----------------------------------------------------------------
+
+   // --- 10.12i1: Set int1 only, check output pin ---
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0100, 2'b11, 1'b1)
+   `CHANGE_STATE_TO_ERR
+   `WAIT_CYCLE
+   if (interrupt_1 !== 1'b1 || interrupt_2 !== 1'b0)
+      $display("bad: pins wrong int1=1 int2=0 at %t", $time());
+   $display("Pin check int1=1 int2=0: PASS at %t", $time());
+
+   // --- 10.12i2: Set int2 only, check output pin ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0200, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h0005), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b1)
+      $display("bad: pins wrong int1=0 int2=1 at %t", $time());
+   $display("Pin check int1=0 int2=1: PASS at %t", $time());
+
+   // --- 10.12i3: Set both, check output pins ---
+   `SETUP_EXPORT
+   `CHANGE_STATE_TO_NORMAL
+   `WRITE_REG(VCHIP_CON_ADDR, 16'h0300, 2'b11, 1'b1)
+   `WRITE_REG(VCHIP_CMD_ADDR, (VCHIP_ALU_VALID | 16'h000F), 2'b11, 1'b1)
+   `WAIT_CYCLE
+   if (interrupt_1 !== 1'b1 || interrupt_2 !== 1'b1)
+      $display("bad: pins wrong int1=1 int2=1 at %t", $time());
+   $display("Pin check int1=1 int2=1: PASS at %t", $time());
+
+   // --- 10.12i4: Clear both, check output pins return to 0 ---
+   `WRITE_REG(VCHIP_STA_ADDR, 16'h0300, 2'b11, 1'b1)
+   if (interrupt_1 !== 1'b0 || interrupt_2 !== 1'b0)
+      $display("bad: pins wrong after clear at %t", $time());
+   $display("Pin check int1=0 int2=0 after clear: PASS at %t", $time());
 
    // ===================================================================
    // SECTION 11: ALU_LEFT / ALU_RIGHT CROSSOVER TEST (0x4000-0x7FFF)
