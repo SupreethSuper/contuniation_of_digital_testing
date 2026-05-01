@@ -20,7 +20,9 @@ module verichip7_cov (input logic clk,                       // system clock
                       input logic [3:0]  state,              // the current state
                       input logic [15:0] alu_left,
                       input logic [15:0] alu_right,
-                      input logic [15:0] alu_out);
+                      input logic [15:0] alu_out,
+                      input logic        export_dis,
+                      input logic        bad_exp_cmd);
 
 localparam VCHIP_ALU_VER = 4'h2;    // current ALU version
 localparam VCHIP_MAJ_VER = 4'h1;
@@ -107,9 +109,28 @@ covergroup alu_regs @ ( negedge clk );
       bins lost    = { VCHIP_STATE_LOST };
    }
 
+   cp_export_dis: coverpoint export_dis
+   {
+      bins enabled  = { 0 };
+      bins disabled = { 1 };
+   }
+
+   cp_valid: coverpoint valid
+   {
+      bins not_valid = { 0 };
+      bins is_valid  = { 1 };
+   }
+
+   cp_bad_exp_cmd: coverpoint bad_exp_cmd
+   {
+      bins not_bad = { 0 };
+      bins is_bad  = { 1 };
+   }
+
    cx_norm_cmd_valid:  cross cp_cmd, cp_norm_valid;
    cx_reset_cmd_valid: cross cp_cmd, cp_reset_valid;
    cx_alu_lr:          cross cp_alu_left, cp_alu_right;
+   cx_bad_exp_cmd:     cross cp_export_dis, cp_valid, cp_bad_exp_cmd;
 
 endgroup // alu_regs
 alu_regs alu_regs_i = new();
