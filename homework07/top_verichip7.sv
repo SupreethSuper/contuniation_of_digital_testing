@@ -1317,7 +1317,6 @@ begin
    // ===================================================================
    $display("\n=== CONFIGURATION REGISTER TESTS ===");
 
-
    // --- 10.11a: Reset value should be 0x0000 ---
    `CLEAR_ALL
    `CHIP_RESET
@@ -3637,5 +3636,9 @@ verichip7 verichip7      (.clk     ( clk ),    // system clock
                    .data_out      ( data_out       ) );  // output data bus
 
 verichip7_binds verichip7_binds();
+
+
+//display("erase if worng");
+
 
 endmodule
