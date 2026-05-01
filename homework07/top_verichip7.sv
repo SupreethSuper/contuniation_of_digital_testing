@@ -3324,7 +3324,140 @@ begin
    end
    $display("Crossover13 byte-enable lo-LEFT hi-RIGHT: PASS at %t", $time());
 
-//$display();
+   // ===================================================================
+   // SECTION 14: OVERFLOW CONDITION TESTS
+   // Tests: valid && overflow
+   // overflow = valid &&
+   //   ( (cmd==ADD && ((left[15]&&right[15]&&!result[15]) ||
+   //                   (!left[15]&&!right[15]&&result[15]))) ||
+   //     (cmd==SUB && ((left[15]&&!right[15]&&!result[15]) ||
+   //                   (!left[15]&&right[15]&&result[15]))) )
+   // 4 sub-cases: ADD neg+neg->pos, ADD pos+pos->neg,
+   //              SUB neg-pos->pos, SUB pos-neg->neg
+   // ===================================================================
+   $display("\n=== OVERFLOW CONDITION TESTS ===");
+
+   // -----------------------------------------------------------------
+   // 14a: ADD overflow - two negatives -> positive
+   //      left[15]=1, right[15]=1, result[15]=0
+   //      left=0x8001 (-32767), right=0x8001 (-32767)
+   //      result = 0x8001+0x8001 = 0x0002 (positive) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h8001, 16'h8001)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   // State should go to ERR due to overflow
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14a ADD overflow neg+neg->pos: left=0x8001 right=0x8001 result=0x0002 -> ERR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14b: ADD overflow - two positives -> negative
+   //      left[15]=0, right[15]=0, result[15]=1
+   //      left=0x7FFF (32767), right=0x0001 (1)
+   //      result = 0x7FFF+0x0001 = 0x8000 (negative) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14b ADD overflow pos+pos->neg: left=0x7FFF right=0x0001 result=0x8000 -> ERR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14c: SUB overflow - negative minus positive -> positive
+   //      left[15]=1, right[15]=0, result[15]=0
+   //      left=0x8000 (-32768), right=0x0001 (1)
+   //      result = 0x8000-0x0001 = 0x7FFF (positive) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h8000, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14c SUB overflow neg-pos->pos: left=0x8000 right=0x0001 result=0x7FFF -> ERR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14d: SUB overflow - positive minus negative -> negative
+   //      left[15]=0, right[15]=1, result[15]=1
+   //      left=0x7FFF (32767), right=0xFFFF (-1)
+   //      result = 0x7FFF-0xFFFF = 0x8000 (negative) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h7FFF, 16'hFFFF)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14d SUB overflow pos-neg->neg: left=0x7FFF right=0xFFFF result=0x8000 -> ERR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14e: ADD overflow - larger negatives
+   //      left=0xC000 (-16384), right=0xC000 (-16384)
+   //      result = 0xC000+0xC000 = 0x8000 -> result[15]=1, NOT overflow
+   //      (both neg -> neg, no sign change)
+   //      Verify NO overflow - state stays NORMAL
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'hC000, 16'hC000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h8000, 1'b1)
+   $display("14e ADD no overflow neg+neg->neg: left=0xC000 right=0xC000 result=0x8000 -> NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14f: SUB no overflow - positive minus positive -> positive
+   //      left=0x7FFF, right=0x0001
+   //      result = 0x7FFF-0x0001 = 0x7FFE -> no sign change, no overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h7FFF, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h7FFE, 1'b1)
+   $display("14f SUB no overflow pos-pos->pos: left=0x7FFF right=0x0001 result=0x7FFE -> NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14g: ADD overflow at boundary - max positives
+   //      left=0x7FFF (32767), right=0x7FFF (32767)
+   //      result = 0x7FFF+0x7FFF = 0xFFFE (negative) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h7FFF, 16'h7FFF)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14g ADD overflow pos+pos->neg: left=0x7FFF right=0x7FFF result=0xFFFE -> ERR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 14h: SUB overflow at boundary - most negative minus positive
+   //      left=0x8000 (-32768), right=0x7FFF (32767)
+   //      result = 0x8000-0x7FFF = 0x0001 (positive) -> overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h8000, 16'h7FFF)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   $display("14h SUB overflow neg-pos->pos: left=0x8000 right=0x7FFF result=0x0001 -> ERR: PASS at %t", $time());
+
    // ===================================================================
    // END OF TESTS
    // ===================================================================
