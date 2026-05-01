@@ -3459,6 +3459,145 @@ begin
    $display("14h SUB overflow neg-pos->pos: left=0x8000 right=0x7FFF result=0x0001 -> ERR: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 15: VALID CONDITION TESTS
+   // valid <= data_in[VCHIP_CMD_VAL] && byte_en[1]
+   // (line 215 in verichip7.sv)
+   // Tests all 4 combinations of data_in[15] x byte_en[1].
+   // valid=1 only when BOTH are 1.
+   // When valid=0, the command should NOT execute (ALU unchanged).
+   // When valid=1, the command executes (ALU changes).
+   // ===================================================================
+   $display("\n=== VALID CONDITION: data_in[15] && byte_en[1] TESTS ===");
+
+   // -----------------------------------------------------------------
+   // 15a: data_in[15]=0, byte_en[1]=0 -> valid=0
+   //      Write CMD with data_in=0x0001 (ADD, bit15=0), byte_en=2'b01
+   //      valid should be 0, ALU should NOT execute
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Write CMD register: data_in[15]=0, byte_en[1]=0 (only byte0)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0001, 2'b01, 1'b1)
+   `WAIT_CYCLE
+
+   // ALU out should still be 0 (no valid command executed)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15a data_in[15]=0 byte_en[1]=0: valid=0, no exec: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 15b: data_in[15]=0, byte_en[1]=1 -> valid=0
+   //      Write CMD with data_in=0x0001 (ADD, bit15=0), byte_en=2'b11
+   //      valid should be 0 because data_in[15]=0
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Write CMD register: data_in[15]=0, byte_en[1]=1 (both bytes)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0001, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   // ALU out should still be 0 (valid=0 because data_in[15]=0)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15b data_in[15]=0 byte_en[1]=1: valid=0, no exec: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 15c: data_in[15]=1, byte_en[1]=0 -> valid=0
+   //      Write CMD with data_in=0x8001 (ADD, bit15=1), byte_en=2'b01
+   //      valid should be 0 because byte_en[1]=0
+   //      Note: byte_en[1]=0 means high byte of data_in is NOT written,
+   //      so even though data_in[15]=1, the valid bit won't be set
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Write CMD register: data_in[15]=1, byte_en[1]=0 (only byte0)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b01, 1'b1)
+   `WAIT_CYCLE
+
+   // ALU out should still be 0 (valid=0 because byte_en[1]=0)
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15c data_in[15]=1 byte_en[1]=0: valid=0, no exec: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 15d: data_in[15]=1, byte_en[1]=1 -> valid=1
+   //      Write CMD with data_in=0x8001 (ADD, bit15=1), byte_en=2'b11
+   //      valid should be 1, ALU SHOULD execute ADD
+   //      left=0x000A, right=0x0005, result=0x000F
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Write CMD register: data_in[15]=1, byte_en[1]=1 (both bytes)
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   // ALU out should be 0x000A + 0x0005 = 0x000F
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h000F, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15d data_in[15]=1 byte_en[1]=1: valid=1, ADD executed: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 15e: data_in[15]=1, byte_en=2'b10 (byte1 only) -> valid=1
+   //      byte_en[1]=1 so valid is set, but byte_en[0]=0 so cmd bits
+   //      are NOT updated (cmd stays at whatever it was before).
+   //      After reset cmd=0 (NON), so cmd stays NON, valid=1 with NON
+   //      -> alu_out unchanged (NON does nothing)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Write CMD register: data_in[15]=1, byte_en=2'b10 (high byte only)
+   // cmd stays 0 (NON) because byte_en[0]=0
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8001, 2'b10, 1'b1)
+   `WAIT_CYCLE
+
+   // valid=1 but cmd=NON -> alu_out stays 0
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15e data_in[15]=1 byte_en=10: valid=1, cmd=NON (not written): PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 15f: Sequence test - first set cmd with byte_en=01 (no valid),
+   //      then trigger valid with byte_en=10 (cmd already loaded)
+   //      This tests that cmd persists from byte0 write and valid
+   //      triggers execution on a subsequent byte1 write.
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h000A, 16'h0005)
+
+   // Step 1: Write cmd=ADD (0x1) via byte0 only, no valid
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0001, 2'b01, 1'b1)
+   `WAIT_CYCLE
+   // ALU should not execute yet
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h0000, 1'b1)
+
+   // Step 2: Now set valid via byte1 only (data_in[15]=1, byte_en=10)
+   // cmd should still be ADD from step 1
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8000, 2'b10, 1'b1)
+   `WAIT_CYCLE
+
+   // valid=1, cmd=ADD -> alu_out = 0x000A + 0x0005 = 0x000F
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h000F, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("15f sequence: byte0 sets cmd, byte1 sets valid: ADD executed: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
