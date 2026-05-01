@@ -3598,6 +3598,109 @@ begin
    $display("15f sequence: byte0 sets cmd, byte1 sets valid: ADD executed: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 16: bad_exp_cmd COMBINATION TEST
+   // bad_exp_cmd = export_dis && valid && (cmd > VCHIP_LAST_EXP_CMD)
+   // Test combination: export_dis=1, valid=0, cmd>LAST_EXP_CMD=1
+   // Result: bad_exp_cmd = 1 && 0 && 1 = 0 -> NO EXP transition
+   // ===================================================================
+   $display("\n=== bad_exp_cmd COMBO: export_dis=1, valid=0, cmd>2 TESTS ===");
+
+   // -----------------------------------------------------------------
+   // 16a: export_dis=1, valid=0 (data_in[15]=0), cmd=5 (SWA, >2)
+   //      bad_exp_cmd = 1 && 0 && 1 = 0
+   //      State should stay NORMAL (no EXP transition)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+
+   // Write cmd=5 (SWA) with data_in[15]=0 -> valid=0
+   // data_in = 0x0005 (bit15=0, cmd=5), byte_en=2'b11
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0005, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   // valid=0, so bad_exp_cmd=0, state stays NORMAL
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("16a export_dis=1 valid=0 cmd=5(>2): bad_exp_cmd=0, NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 16b: export_dis=1, valid=0 (byte_en[1]=0), cmd=5 (SWA, >2)
+   //      Another way to get valid=0: data_in[15]=1 but byte_en[1]=0
+   //      bad_exp_cmd = 1 && 0 && 1 = 0
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+
+   // Write cmd=5 with data_in[15]=1 but byte_en=2'b01 -> valid=0
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h8005, 2'b01, 1'b1)
+   `WAIT_CYCLE
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("16b export_dis=1 valid=0(be=01) cmd=5(>2): bad_exp_cmd=0, NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 16c: export_dis=1, valid=0, cmd=3 (MVL, >2, boundary)
+   //      cmd=3 is the smallest value > VCHIP_LAST_EXP_CMD(2)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0003, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("16c export_dis=1 valid=0 cmd=3(>2 boundary): bad_exp_cmd=0, NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 16d: export_dis=1, valid=0, cmd=7 (SHR, >2, max legal)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h0007, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("16d export_dis=1 valid=0 cmd=7(>2): bad_exp_cmd=0, NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 16e: export_dis=1, valid=0, cmd=0xF (>2, max illegal)
+   //      Even with max illegal cmd, valid=0 prevents any transition
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   wait(clk == 1'b0);
+   export_disable <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+   `CHANGE_STATE_TO_NORMAL
+
+   `WRITE_REG(VCHIP_CMD_ADDR, 16'h000F, 2'b11, 1'b1)
+   `WAIT_CYCLE
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("16e export_dis=1 valid=0 cmd=0xF(>2): bad_exp_cmd=0, NORM: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
