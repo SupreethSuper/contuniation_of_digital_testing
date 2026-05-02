@@ -4168,6 +4168,251 @@ begin
    $display("20d SUB 0x8001-0x0000=0x8001: no overflow: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 21: TOGGLE TEST - next_left[15:4] and next_right[15:4]
+   // next_left is non-zero only during MVL (=alu_out) or SWA (=alu_right)
+   // next_right is non-zero only during MVR (=alu_out) or SWA (=alu_left)
+   // All other commands: next_left=0, next_right=0
+   //
+   // Strategy: drive alu_out with walking-1 patterns in bits [15:4],
+   // then issue MVL/MVR to toggle each bit 0->1. The following cycle
+   // (no valid cmd) returns next_left/next_right to 0 (1->0 toggle).
+   // ===================================================================
+   $display("\n=== TOGGLE TEST: next_left[15:4] and next_right[15:4] ===");
+
+   // -----------------------------------------------------------------
+   // 21a: next_left[15:4] toggle - all bits at once via MVL
+   //      Step 1: alu_out = 0xFFF0 (bits 15:4 all 1)
+   //      Step 2: MVL -> next_left = 0xFFF0 (0->1 for bits 15:4)
+   //      Step 3: next cycle -> next_left = 0 (1->0 for bits 15:4)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'hFFF0, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)            // alu_out = 0xFFF0 + 0x0000 = 0xFFF0
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'hFFF0, 1'b1)
+
+   // MVL: next_left = alu_out = 0xFFF0 (bits 15:4 toggle 0->1)
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   // alu_left should now be 0xFFF0
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'hFFF0, 1'b1)
+   // next_left is now back to 0 (1->0 toggle happened on this cycle)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("21a next_left[15:4] all bits toggled 0->1->0 via MVL: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 21b: next_right[15:4] toggle - all bits at once via MVR
+   //      alu_out is still 0xFFF0 (preserved from MVL)
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'hFFF0, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)            // alu_out = 0xFFF0
+   `WAIT_CYCLE
+
+   // MVR: next_right = alu_out = 0xFFF0 (bits 15:4 toggle 0->1)
+   `MATH_CMD(VCHIP_ALU_MVR)
+   `WAIT_CYCLE
+   // alu_right should now be 0xFFF0
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'hFFF0, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("21b next_right[15:4] all bits toggled 0->1->0 via MVR: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 21c: Walking-1 toggle for next_left[15:4] via MVL
+   //      Each bit individually: 0x8000, 0x4000, ... 0x0010
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+
+   // Bit 15: alu_out=0x8000
+   `SETUP_ALU(16'h8000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h8000, 1'b1)
+
+   // Bit 14: alu_out=0x4000
+   `SETUP_ALU(16'h4000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h4000, 1'b1)
+
+   // Bit 13: alu_out=0x2000
+   `SETUP_ALU(16'h2000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h2000, 1'b1)
+
+   // Bit 12: alu_out=0x1000
+   `SETUP_ALU(16'h1000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h1000, 1'b1)
+
+   // Bit 11: alu_out=0x0800
+   `SETUP_ALU(16'h0800, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0800, 1'b1)
+
+   // Bit 10: alu_out=0x0400
+   `SETUP_ALU(16'h0400, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0400, 1'b1)
+
+   // Bit 9: alu_out=0x0200
+   `SETUP_ALU(16'h0200, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0200, 1'b1)
+
+   // Bit 8: alu_out=0x0100
+   `SETUP_ALU(16'h0100, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0100, 1'b1)
+
+   // Bit 7: alu_out=0x0080
+   `SETUP_ALU(16'h0080, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0080, 1'b1)
+
+   // Bit 6: alu_out=0x0040
+   `SETUP_ALU(16'h0040, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0040, 1'b1)
+
+   // Bit 5: alu_out=0x0020
+   `SETUP_ALU(16'h0020, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0020, 1'b1)
+
+   // Bit 4: alu_out=0x0010
+   `SETUP_ALU(16'h0010, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_ADD)
+   `WAIT_CYCLE
+   `MATH_CMD(VCHIP_ALU_MVL)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_LEFT_ADDR, 16'h0010, 1'b1)
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("21c next_left[15:4] walking-1 toggle via MVL: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 21d: Walking-1 toggle for next_right[15:4] via SWA
+   //      SWA: next_right = alu_left. Set alu_left to walking-1 patterns.
+   //      Each SWA swaps left<->right, so next_right gets alu_left value.
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+
+   // Bit 15
+   `SETUP_ALU(16'h8000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)            // next_right = alu_left = 0x8000
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h8000, 1'b1)
+
+   // Bit 14
+   `SETUP_ALU(16'h4000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h4000, 1'b1)
+
+   // Bit 13
+   `SETUP_ALU(16'h2000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h2000, 1'b1)
+
+   // Bit 12
+   `SETUP_ALU(16'h1000, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h1000, 1'b1)
+
+   // Bit 11
+   `SETUP_ALU(16'h0800, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0800, 1'b1)
+
+   // Bit 10
+   `SETUP_ALU(16'h0400, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0400, 1'b1)
+
+   // Bit 9
+   `SETUP_ALU(16'h0200, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0200, 1'b1)
+
+   // Bit 8
+   `SETUP_ALU(16'h0100, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0100, 1'b1)
+
+   // Bit 7
+   `SETUP_ALU(16'h0080, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0080, 1'b1)
+
+   // Bit 6
+   `SETUP_ALU(16'h0040, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0040, 1'b1)
+
+   // Bit 5
+   `SETUP_ALU(16'h0020, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0020, 1'b1)
+
+   // Bit 4
+   `SETUP_ALU(16'h0010, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SWA)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_RIGHT_ADDR, 16'h0010, 1'b1)
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("21d next_right[15:4] walking-1 toggle via SWA: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
