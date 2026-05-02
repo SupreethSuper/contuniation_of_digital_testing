@@ -4097,6 +4097,77 @@ begin
    $display("19b3 NORM + maroon=1 gold=1: stays NORM: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 20: CROSSOVER - alu_left[15] x !alu_right[15] x !alu_result[15]
+   // Target combo: 1 x 1 x 0
+   //   alu_left[15]=1 (negative), alu_right[15]=0 (positive),
+   //   alu_result[15]=1 (negative)
+   // This is SUB: negative - positive = negative (no overflow, correct sign)
+   // State should stay NORMAL.
+   // ===================================================================
+   $display("\n=== CROSSOVER: left[15] x !right[15] x !result[15] = 1x1x0 TESTS ===");
+
+   // -----------------------------------------------------------------
+   // 20a: left=0xFFFE (-2), right=0x0001 (1)
+   //      result = 0xFFFE - 0x0001 = 0xFFFD (-3)
+   //      left[15]=1, right[15]=0, result[15]=1 -> no overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'hFFFE, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'hFFFD, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("20a SUB 0xFFFE-0x0001=0xFFFD: left[15]=1 right[15]=0 result[15]=1, no overflow: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 20b: left=0x8010 (-32752), right=0x0001 (1)
+   //      result = 0x8010 - 0x0001 = 0x800F (-32753)
+   //      left[15]=1, right[15]=0, result[15]=1 -> no overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h8010, 16'h0001)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h800F, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("20b SUB 0x8010-0x0001=0x800F: no overflow: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 20c: left=0xC000 (-16384), right=0x3FFF (16383)
+   //      result = 0xC000 - 0x3FFF = 0x8001 (-32767)
+   //      left[15]=1, right[15]=0, result[15]=1 -> no overflow
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'hC000, 16'h3FFF)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h8001, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("20c SUB 0xC000-0x3FFF=0x8001: no overflow: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // 20d: left=0x8001 (-32767), right=0x0000 (0)
+   //      result = 0x8001 - 0x0000 = 0x8001 (-32767)
+   //      left[15]=1, right[15]=0, result[15]=1 -> no overflow
+   //      Edge case: subtracting zero
+   // -----------------------------------------------------------------
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `SETUP_ALU(16'h8001, 16'h0000)
+   `MATH_CMD(VCHIP_ALU_SUB)
+   `WAIT_CYCLE
+   `READ_REG(VCHIP_ALU_OUT_ADDR, 16'h8001, 1'b1)
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   $display("20d SUB 0x8001-0x0000=0x8001: no overflow: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");
