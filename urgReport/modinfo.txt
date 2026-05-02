@@ -1,0 +1,894 @@
+===============================================================================
+Module : verichip7
+===============================================================================
+SCORE  LINE   COND   TOGGLE FSM    
+ 77.18 100.00  93.46  70.28  45.00 
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/verichip7.sv
+
+Module self-instances :
+
+SCORE  LINE   COND   TOGGLE FSM    NAME                    
+ 77.18 100.00  93.46  70.28  45.00 top_verichip7.verichip7 
+
+
+
+-------------------------------------------------------------------------------
+Line Coverage for Module : verichip7
+
+             Line No.   Total   Covered  Percent
+TOTAL                      159      159   100.00
+ALWAYS             92        7        7   100.00
+ALWAYS            121       14       14   100.00
+ALWAYS            163        7        7   100.00
+ALWAYS            181        7        7   100.00
+ALWAYS            198       14       14   100.00
+ALWAYS            227       12       12   100.00
+ALWAYS            251       13       13   100.00
+ALWAYS            278       13       13   100.00
+ALWAYS            305        5        5   100.00
+ALWAYS            320        9        9   100.00
+ALWAYS            336       58       58   100.00
+
+91                      begin
+92         1/1            if ( !rst_b )
+93                        begin
+94         1/1               export_dis <= export_disable;
+95         1/1               state      <= VCHIP_STATE_RESET;
+96         1/1               alu_out    <= 16'h0;
+97                        end // if ( !rst_b )
+98                        else
+99                        begin
+100        1/1               export_dis <= export_disable;
+101        1/1               state <= next_state;
+102        1/1               alu_out <= alu_result;
+103                       end // else: !if( !rst_b )
+104                     end
+105                     
+106                     assign bad_exp_cmd = export_dis && valid && ( cmd > VCHIP_LAST_EXP_CMD );
+107                     assign bad_cmd     = valid && ( cmd > VCHIP_LAST_CMD );
+108                     assign overflow    = valid &&
+109                                          ( ( ( cmd == VCHIP_CMD_ADD ) &&                                      // adding
+110                                              ( ( alu_left[15] && alu_right[15] && !alu_result[15] ) ||        // two neg -> pos
+111                                                ( !alu_left[15] && !alu_right[15] && alu_result[15] ) ) ) ||   // two pos -> neg
+112                                             ( ( cmd == VCHIP_CMD_SUB ) &&                                     // subtracting
+113                                               ( ( alu_left[15] && !alu_right[15] && !alu_result[15] ) ||      // neg - pos -> pos
+114                                                 ( !alu_left[15] && alu_right[15] && alu_result[15] ) ) ) );   // pos - neg -> neg
+115                     
+116                     assign interrupt_1 = int1;
+117                     assign interrupt_2 = int2;
+118                     
+119                     always_comb
+120                     begin
+121        1/1             case ( state )
+122                          VCHIP_STATE_RESET:
+123                          begin
+124        1/1                  if ( !maroon && gold )
+125        1/1                     next_state = VCHIP_STATE_NORM;
+126                             else
+127        1/1                     next_state = VCHIP_STATE_RESET;
+128                          end // case: VCHIP_STATE_RESET
+129                     
+130                          VCHIP_STATE_NORM:
+131                          begin
+132        1/1                  if ( export_dis && valid && bad_exp_cmd )
+133        1/1                     next_state = VCHIP_STATE_EXP;
+134        1/1                  else if ( valid && ( bad_cmd || overflow ) )
+135        1/1                     next_state = VCHIP_STATE_ERR;
+136                             else
+137        1/1                     next_state = VCHIP_STATE_NORM;
+138                          end // case: VCHIP_STATE_NORM
+139                     
+140                          VCHIP_STATE_ERR:
+141                          begin
+142        1/1                  if ( maroon && !gold )
+143        1/1                     next_state = VCHIP_STATE_NORM;
+144                             else
+145        1/1                     next_state = VCHIP_STATE_ERR;
+146                          end // case: VCHIP_STATE_ERR
+147                     
+148                          VCHIP_STATE_EXP:
+149                          begin
+150        1/1                  next_state = VCHIP_STATE_EXP;
+151                          end // case: VCHIP_STATE_EXP
+152                     
+153                          default:
+154                          begin
+155        1/1                  next_state = VCHIP_STATE_LOST;
+156                          end // case: default
+157                     
+158                        endcase // case ( state )
+159                     end // always_comb
+160                     
+161                     always_ff @ ( posedge clk or negedge rst_b )
+162                     begin
+163        1/1            if ( !rst_b )
+164                       begin
+165        1/1               int1       <= 1'b0;
+166                       end // if ( !rst_b )
+167        1/1            else if ( int1_en && ( state == VCHIP_STATE_NORM ) && valid &&
+168                                 ( bad_cmd || overflow ) )
+169                       begin
+170        1/1               int1 <= 1'b1;
+171                       end // if ( ( state == VCHIP_STATE_NORM ) && valid &&...
+172        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_STA ) && byte_en[1] )
+173                       begin
+174        1/1               if ( data_in[VCHIP_STA_INT1] )
+175        1/1                  int1 <= 1'b0;
+                        MISSING_ELSE
+176                       end // else: !if( !rst_b )
+                        MISSING_ELSE
+177                     end // always_ff @ ( posedge clk or negedge rst_b )
+178                     
+179                     always_ff @ ( posedge clk or negedge rst_b )
+180                     begin
+181        1/1            if ( !rst_b )
+182                       begin
+183        1/1               int2       <= 1'b0;
+184                       end // if ( !rst_b )
+185        1/1            else if ( int2_en && ( state == VCHIP_STATE_NORM ) && valid && bad_exp_cmd )
+186                       begin
+187        1/1               int2 <= 1'b1;
+188                       end // if ( ( state == VCHIP_STATE_NORM ) && valid &&...
+189        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_STA ) && byte_en[1] )
+190                       begin
+191        1/1               if ( data_in[VCHIP_STA_INT2] )
+192        1/1                  int2 <= 1'b0;
+                        MISSING_ELSE
+193                       end // else: !if( !rst_b )
+                        MISSING_ELSE
+194                     end // always_ff @ ( posedge clk or negedge rst_b )
+195                     
+196                     always_ff @ ( posedge clk or negedge rst_b )
+197                     begin
+198        1/1            if ( !rst_b )
+199                       begin
+200        1/1               valid <= 1'b0;
+201        1/1               cmd <= VCHIP_CMD_NONE;
+202                       end // if ( !rst_b )
+203        1/1            else if ( next_state == VCHIP_STATE_EXP )
+204                       begin
+205        1/1               valid <= 1'b0;
+206        1/1               cmd <= VCHIP_CMD_NONE;
+207                       end // if ( next_state == VCHIP_STATE_EXP )
+208        1/1            else if ( state == VCHIP_STATE_ERR )
+209                       begin
+210        1/1               valid <= 1'b0;
+211        1/1               cmd <= cmd;
+212                       end // if ( state == VCHIP_STATE_ERR )
+213        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+214                       begin
+215        1/1               valid <= data_in[VCHIP_CMD_VAL] && byte_en[1];
+216        1/1               if ( byte_en[0] )
+217        1/1                  cmd <= data_in[VCHIP_CMD_LEFT:0];
+                        MISSING_ELSE
+218                       end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+219                       else
+220                       begin
+221        1/1               valid <= 1'b0;
+222                       end // else: !if( chip_select && !rw_ && ( address == VCHIP_ADDR_CMD ) )
+223                     end // always_ff @ ( posedge clk or negedge rst_b )
+224                     
+225                     always_ff @ ( posedge clk or negedge rst_b )
+226                     begin
+227        1/1            if ( !rst_b )
+228                       begin
+229        1/1               int2_en    <= 1'b0;
+230        1/1               int1_en    <= 1'b0;
+231                       end // if ( !rst_b )
+232        1/1            else if ( next_state == VCHIP_STATE_EXP )
+233                       begin
+234        1/1               int2_en <= 1'b0;
+235        1/1               int1_en <= 1'b0;
+236                       end // if ( next_state == VCHIP_STATE_EXP )
+237        1/1            else if ( state == VCHIP_STATE_ERR )
+238                       begin
+239        1/1               int2_en <= int2_en;
+240        1/1               int1_en <= int1_en;
+241                       end // if ( state == VCHIP_STATE_ERR )
+242        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_CON ) && byte_en[1] )
+243                       begin
+244        1/1               int2_en <= data_in[VCHIP_STA_INT2];
+245        1/1               int1_en <= data_in[VCHIP_STA_INT1];
+246                       end // else: !if( !rst_b )
+                        MISSING_ELSE
+247                     end // always_ff @ ( posedge clk or negedge rst_b )
+248                     
+249                     always_ff @ ( posedge clk or negedge rst_b )
+250                     begin
+251        1/1            if ( !rst_b )
+252                       begin
+253        1/1               alu_left <= 16'h0;
+254                       end // if ( !rst_b )
+255        1/1            else if ( next_state == VCHIP_STATE_EXP )
+256                       begin
+257        1/1               alu_left <= 16'h0;
+258                       end // if ( next_state == VCHIP_STATE_EXP )
+259        1/1            else if ( state == VCHIP_STATE_ERR )
+260                       begin
+261        1/1               alu_left <= alu_left;
+262                       end // if ( state == VCHIP_STATE_ERR )
+263        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+264                       begin
+265        1/1               if ( byte_en[0] )
+266        1/1                  alu_left[7:0] <= data_in[7:0];
+                        MISSING_ELSE
+267        1/1               if ( byte_en[1] )
+268        1/1                  alu_left[15:8] <= data_in[15:8];
+                        MISSING_ELSE
+269                       end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+270        1/1            else if ( load_left )
+271                       begin
+272        1/1               alu_left <= next_left;
+273                       end // if ( load_left )
+                        MISSING_ELSE
+274                     end // always_ff @ ( posedge clk or negedge rst_b )
+275                     
+276                     always_ff @ ( posedge clk or negedge rst_b )
+277                     begin
+278        1/1            if ( !rst_b )
+279                       begin
+280        1/1               alu_right <= 16'h0;
+281                       end // if ( !rst_b )
+282        1/1            else if ( next_state == VCHIP_STATE_EXP )
+283                       begin
+284        1/1               alu_right <= 16'h0;
+285                       end // if ( next_state == VCHIP_STATE_EXP )
+286        1/1            else if ( state == VCHIP_STATE_ERR )
+287                       begin
+288        1/1               alu_right <= alu_right;
+289                       end // if ( state == VCHIP_STATE_ERR )
+290        1/1            else if ( chip_select && !rw_ && ( address == VCHIP_ADDR_RGT ) )
+291                       begin
+292        1/1               if ( byte_en[0] )
+293        1/1                  alu_right[7:0] <= data_in[7:0];
+                        MISSING_ELSE
+294        1/1               if ( byte_en[1] )
+295        1/1                  alu_right[15:8] <= data_in[15:8];
+                        MISSING_ELSE
+296                       end // if ( chip_select && !rw_ && ( address == VCHIP_ADDR_LFT ) )
+297        1/1            else if ( load_right )
+298                       begin
+299        1/1               alu_right <= next_right;
+300                       end // if ( load_right )
+                        MISSING_ELSE
+301                     end // always_ff @ ( posedge clk or negedge rst_b )
+302                     
+303                     always_comb
+304                     begin
+305        1/1            if ( ( next_state == VCHIP_STATE_EXP ) && ( address != VCHIP_ADDR_STA ) )
+306        1/1               data_out = 16'h0;
+307        1/1            else if ( chip_select )
+308        1/1               data_out = data_out_tmp;
+309                       else
+310        1/1               data_out = 16'h0;
+311                     end // always_comb
+312                     
+313                     assign version_reg = { export_dis, 3'h0, VCHIP_ALU_VER, VCHIP_MAJ_VER, VCHIP_MIN_VER };
+314                     assign status_reg  = { 6'h0, int2, int1, 4'h0, state };
+315                     assign cmd_reg     = { valid, 11'h0, cmd };
+316                     assign con_reg     = { 6'h0, int2_en, int1_en, 8'h0 };
+317                     
+318                     always_comb
+319                     begin
+320        1/1            case ( address )
+321        1/1              VCHIP_ADDR_VER: data_out_tmp = version_reg;
+322        1/1              VCHIP_ADDR_STA: data_out_tmp = status_reg;
+323        1/1              VCHIP_ADDR_CMD: data_out_tmp = cmd_reg;
+324        1/1              VCHIP_ADDR_CON: data_out_tmp = con_reg;
+325        1/1              VCHIP_ADDR_LFT: data_out_tmp = alu_left;
+326        1/1              VCHIP_ADDR_RGT: data_out_tmp = alu_right;
+327        1/1              VCHIP_ADDR_ALU: data_out_tmp = alu_out;
+328                     
+329        1/1              default: data_out_tmp = 16'h0;
+330                       endcase // case ( address )
+331                     end // always_comb
+332                     
+333                     // build the ALU
+334                     always_comb
+335                     begin
+336        1/1             if ( next_state == VCHIP_STATE_EXP )
+337                        begin
+338        1/1                alu_result = 16'h0;
+339        1/1                load_left = 1'b0;
+340        1/1                load_right = 1'b0;
+341        1/1                next_left = 16'h0;
+342        1/1                next_right = 16'h0;
+343                        end // if ( next_state == VCHIP_STATE_EXP )
+344                     
+345        1/1             else if ( ( state != VCHIP_STATE_NORM ) || !valid || bad_cmd )
+346                        begin
+347        1/1                alu_result = alu_out;
+348        1/1                load_left = 1'b0;
+349        1/1                load_right = 1'b0;
+350        1/1                next_left = 16'h0;
+351        1/1                next_right = 16'h0;
+352                        end // if ( ( state != VCHIP_STATE_NORM ) || !valid || bad_cmd )
+353                     
+354                        else
+355                        begin
+356        1/1                case ( cmd )
+357                             VCHIP_CMD_NONE:
+358                             begin
+359        1/1                     alu_result = alu_out;
+360        1/1                     load_left = 1'b0;
+361        1/1                     load_right = 1'b0;
+362        1/1                     next_left = 16'h0;
+363        1/1                     next_right = 16'h0;
+364                             end // case: VCHIP_CMD_NONE
+365                     
+366                             VCHIP_CMD_ADD:
+367                             begin
+368        1/1                     alu_result = alu_left + alu_right;
+369        1/1                     load_left = 1'b0;
+370        1/1                     load_right = 1'b0;
+371        1/1                     next_left = 16'h0;
+372        1/1                     next_right = 16'h0;
+373                             end // case: VCHIP_CMD_ADD
+374                     
+375                             VCHIP_CMD_SUB:
+376                             begin
+377        1/1                     alu_result = alu_left - alu_right;
+378        1/1                     load_left = 1'b0;
+379        1/1                     load_right = 1'b0;
+380        1/1                     next_left = 16'h0;
+381        1/1                     next_right = 16'h0;
+382                             end // case: VCHIP_CMD_SUB
+383                     
+384                             VCHIP_CMD_MVL:   // move out to left
+385                             begin
+386        1/1                     alu_result = alu_out;
+387        1/1                     load_left = 1'b1;
+388        1/1                     load_right = 1'b0;
+389        1/1                     next_left = alu_out;
+390        1/1                     next_right = 16'h0;
+391                             end // case: VCHIP_CMD_MVL
+392                     
+393                             VCHIP_CMD_MVR:   // move out to right
+394                             begin
+395        1/1                     alu_result = alu_out;
+396        1/1                     load_left = 1'b0;
+397        1/1                     load_right = 1'b1;
+398        1/1                     next_left = 16'h0;
+399        1/1                     next_right = alu_out;
+400                             end // case: VCHIP_CMD_MVR
+401                     
+402                             VCHIP_CMD_SWA:
+403                             begin
+404        1/1                     alu_result = alu_out;
+405        1/1                     load_left = 1'b1;
+406        1/1                     load_right = 1'b1;
+407        1/1                     next_left = alu_right;
+408        1/1                     next_right = alu_left;
+409                             end // case: VCHIP_CMD_SWA
+410                     
+411                             VCHIP_CMD_SHL:
+412                             begin
+413        1/1                     alu_result = alu_left << alu_right;
+414        1/1                     load_left = 1'b0;
+415        1/1                     load_right = 1'b0;
+416        1/1                     next_left = 16'h0;
+417        1/1                     next_right = 16'h0;
+418                             end // case: VCHIP_CMD_SHL
+419                     
+420                             VCHIP_CMD_SHR:
+421                             begin
+422        1/1                     alu_result = alu_left >> alu_right;
+423        1/1                     load_left = 1'b0;
+424        1/1                     load_right = 1'b0;
+425        1/1                     next_left = 16'h0;
+426        1/1                     next_right = 16'h0;
+427                             end // case: VCHIP_CMD_SHR
+428                     
+429                             default:
+430                             begin
+431        1/1                     alu_result = alu_out;
+432        1/1                     load_left = 1'b0;
+433        1/1                     load_right = 1'b0;
+434        1/1                     next_left = 16'h0;
+435        1/1                     next_right = 16'h0;
+
+-------------------------------------------------------------------------------
+Cond Coverage for Module : verichip7
+
+               Total   Covered  Percent
+Conditions        107      100    93.46
+Logical           107      100    93.46
+Non-Logical         0        0
+Event               0        0
+
+ LINE       124
+ EXPRESSION (((!maroon)) && gold)
+             -----1-----    --2-
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       132
+ EXPRESSION (export_dis && valid && bad_exp_cmd)
+             -----1----    --2--    -----3-----
+
+-1- -2- -3- Status
+ 0   1   1  Not Covered
+ 1   0   1  Not Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       134
+ EXPRESSION (valid && (bad_cmd || overflow))
+             --1--    ----------2----------
+
+-1- -2- Status
+ 0   1  Not Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       134
+ SUB-EXPRESSION (bad_cmd || overflow)
+                 ---1---    ----2---
+
+-1- -2- Status
+ 0   0  Covered
+ 0   1  Covered
+ 1   0  Covered
+
+ LINE       142
+ EXPRESSION (maroon && ((!gold)))
+             ---1--    ----2----
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       167
+ EXPRESSION (int1_en && (state == VCHIP_STATE_NORM) && valid && (bad_cmd || overflow))
+             ---1---    -------------2-------------    --3--    ----------4----------
+
+-1- -2- -3- -4- Status
+ 0   1   1   1  Covered
+ 1   0   1   1  Not Covered
+ 1   1   0   1  Not Covered
+ 1   1   1   0  Covered
+ 1   1   1   1  Covered
+
+ LINE       167
+ SUB-EXPRESSION (bad_cmd || overflow)
+                 ---1---    ----2---
+
+-1- -2- Status
+ 0   0  Covered
+ 0   1  Covered
+ 1   0  Covered
+
+ LINE       172
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_STA) && byte_en[1])
+             -----1-----    ----2---    -------------3-------------    -----4----
+
+-1- -2- -3- -4- Status
+ 0   1   1   1  Covered
+ 1   0   1   1  Covered
+ 1   1   0   1  Covered
+ 1   1   1   0  Covered
+ 1   1   1   1  Covered
+
+ LINE       185
+ EXPRESSION (int2_en && (state == VCHIP_STATE_NORM) && valid && bad_exp_cmd)
+             ---1---    -------------2-------------    --3--    -----4-----
+
+-1- -2- -3- -4- Status
+ 0   1   1   1  Covered
+ 1   0   1   1  Not Covered
+ 1   1   0   1  Not Covered
+ 1   1   1   0  Covered
+ 1   1   1   1  Covered
+
+ LINE       189
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_STA) && byte_en[1])
+             -----1-----    ----2---    -------------3-------------    -----4----
+
+-1- -2- -3- -4- Status
+ 0   1   1   1  Covered
+ 1   0   1   1  Covered
+ 1   1   0   1  Covered
+ 1   1   1   0  Covered
+ 1   1   1   1  Covered
+
+ LINE       213
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_CMD))
+             -----1-----    ----2---    -------------3-------------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       215
+ EXPRESSION (data_in[VCHIP_CMD_VAL] && byte_en[1])
+             -----------1----------    -----2----
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       242
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_CON) && byte_en[1])
+             -----1-----    ----2---    -------------3-------------    -----4----
+
+-1- -2- -3- -4- Status
+ 0   1   1   1  Covered
+ 1   0   1   1  Covered
+ 1   1   0   1  Covered
+ 1   1   1   0  Covered
+ 1   1   1   1  Covered
+
+ LINE       263
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_LFT))
+             -----1-----    ----2---    -------------3-------------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       290
+ EXPRESSION (chip_select && ((!rw_)) && (address == VCHIP_ADDR_RGT))
+             -----1-----    ----2---    -------------3-------------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       305
+ EXPRESSION ((next_state == VCHIP_STATE_EXP) && (address != VCHIP_ADDR_STA))
+             ---------------1---------------    -------------2-------------
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       345
+ EXPRESSION ((state != VCHIP_STATE_NORM) || ((!valid)) || bad_cmd)
+             -------------1-------------    -----2----    ---3---
+
+-1- -2- -3- Status
+ 0   0   0  Covered
+ 0   0   1  Covered
+ 0   1   0  Covered
+ 1   0   0  Covered
+
+ LINE       106
+ EXPRESSION (export_dis && valid && (cmd > VCHIP_LAST_EXP_CMD))
+             -----1----    --2--    -------------3------------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       107
+ EXPRESSION (valid && (cmd > VCHIP_LAST_CMD))
+             --1--    -----------2----------
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       108
+ EXPRESSION 
+ Number  Term
+      1  valid && 
+      2  (((cmd == VCHIP_CMD_ADD) && ((alu_left[15] && alu_right[15] && ((!alu_result[15]))) || (((!alu_left[15])) && ((!alu_right[15])) && alu_result[15]))) || ((cmd == VCHIP_CMD_SUB) && ((alu_left[15] && ((!alu_right[15])) && ((!alu_result[15]))) || (((!alu_left[15])) && alu_right[15] && alu_result[15])))))
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION 
+ Number  Term
+      1  ((cmd == VCHIP_CMD_ADD) && ((alu_left[15] && alu_right[15] && ((!alu_result[15]))) || (((!alu_left[15])) && ((!alu_right[15])) && alu_result[15]))) || 
+      2  ((cmd == VCHIP_CMD_SUB) && ((alu_left[15] && ((!alu_right[15])) && ((!alu_result[15]))) || (((!alu_left[15])) && alu_right[15] && alu_result[15]))))
+
+-1- -2- Status
+ 0   0  Covered
+ 0   1  Covered
+ 1   0  Covered
+
+ LINE       108
+ SUB-EXPRESSION ((cmd == VCHIP_CMD_ADD) && ((alu_left[15] && alu_right[15] && ((!alu_result[15]))) || (((!alu_left[15])) && ((!alu_right[15])) && alu_result[15])))
+                 -----------1----------    -----------------------------------------------------------2-----------------------------------------------------------
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION ((alu_left[15] && alu_right[15] && ((!alu_result[15]))) || (((!alu_left[15])) && ((!alu_right[15])) && alu_result[15]))
+                 ---------------------------1--------------------------    -----------------------------2-----------------------------
+
+-1- -2- Status
+ 0   0  Covered
+ 0   1  Covered
+ 1   0  Covered
+
+ LINE       108
+ SUB-EXPRESSION (alu_left[15] && alu_right[15] && ((!alu_result[15])))
+                 ------1-----    ------2------    ---------3---------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION (((!alu_left[15])) && ((!alu_right[15])) && alu_result[15])
+                 --------1--------    ---------2--------    -------3------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION ((cmd == VCHIP_CMD_SUB) && ((alu_left[15] && ((!alu_right[15])) && ((!alu_result[15]))) || (((!alu_left[15])) && alu_right[15] && alu_result[15])))
+                 -----------1----------    -----------------------------------------------------------2-----------------------------------------------------------
+
+-1- -2- Status
+ 0   1  Covered
+ 1   0  Covered
+ 1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION ((alu_left[15] && ((!alu_right[15])) && ((!alu_result[15]))) || (((!alu_left[15])) && alu_right[15] && alu_result[15]))
+                 -----------------------------1-----------------------------    ---------------------------2--------------------------
+
+-1- -2- Status
+ 0   0  Covered
+ 0   1  Covered
+ 1   0  Covered
+
+ LINE       108
+ SUB-EXPRESSION (alu_left[15] && ((!alu_right[15])) && ((!alu_result[15])))
+                 ------1-----    ---------2--------    ---------3---------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+ LINE       108
+ SUB-EXPRESSION (((!alu_left[15])) && alu_right[15] && alu_result[15])
+                 --------1--------    ------2------    -------3------
+
+-1- -2- -3- Status
+ 0   1   1  Covered
+ 1   0   1  Covered
+ 1   1   0  Covered
+ 1   1   1  Covered
+
+-------------------------------------------------------------------------------
+Toggle Coverage for Module : verichip7
+                Total Covered Percent 
+Totals          38    32      84.21   
+Total Bits      498   350     70.28   
+Total Bits 0->1 249   175     70.28   
+Total Bits 1->0 249   175     70.28   
+
+                              
+Ports          13  13  100.00 
+Port Bits      100 100 100.00 
+Port Bits 0->1 50  50  100.00 
+Port Bits 1->0 50  50  100.00 
+
+                                
+Signals          25  19  76.00  
+Signal Bits      398 250 62.81  
+Signal Bits 0->1 199 125 62.81  
+Signal Bits 1->0 199 125 62.81  
+
+Port Details
+               Toggle Toggle 1->0 Toggle 0->1 Direction 
+clk            Yes    Yes         Yes         INPUT     
+rst_b          Yes    Yes         Yes         INPUT     
+export_disable Yes    Yes         Yes         INPUT     
+interrupt_1    Yes    Yes         Yes         OUTPUT    
+interrupt_2    Yes    Yes         Yes         OUTPUT    
+maroon         Yes    Yes         Yes         INPUT     
+gold           Yes    Yes         Yes         INPUT     
+chip_select    Yes    Yes         Yes         INPUT     
+address[6:0]   Yes    Yes         Yes         INPUT     
+byte_en[1:0]   Yes    Yes         Yes         INPUT     
+rw_            Yes    Yes         Yes         INPUT     
+data_in[15:0]  Yes    Yes         Yes         INPUT     
+data_out[15:0] Yes    Yes         Yes         OUTPUT    
+
+Signal Details
+                   Toggle Toggle 1->0 Toggle 0->1 
+export_dis         Yes    Yes         Yes         
+version_reg[14:0]  No     No          No          
+version_reg[15]    Yes    Yes         Yes         
+int2               Yes    Yes         Yes         
+int1               Yes    Yes         Yes         
+state[3:0]         Yes    Yes         Yes         
+status_reg[3:0]    Yes    Yes         Yes         
+status_reg[7:4]    No     No          No          
+status_reg[9:8]    Yes    Yes         Yes         
+status_reg[15:10]  No     No          No          
+next_state[3:0]    Yes    Yes         Yes         
+valid              Yes    Yes         Yes         
+cmd[3:0]           Yes    Yes         Yes         
+cmd_reg[3:0]       Yes    Yes         Yes         
+cmd_reg[14:4]      No     No          No          
+cmd_reg[15]        Yes    Yes         Yes         
+bad_exp_cmd        Yes    Yes         Yes         
+bad_cmd            Yes    Yes         Yes         
+int2_en            Yes    Yes         Yes         
+int1_en            Yes    Yes         Yes         
+con_reg[7:0]       No     No          No          
+con_reg[9:8]       Yes    Yes         Yes         
+con_reg[15:10]     No     No          No          
+alu_left[15:0]     Yes    Yes         Yes         
+alu_right[15:0]    Yes    Yes         Yes         
+alu_out[15:0]      Yes    Yes         Yes         
+overflow           Yes    Yes         Yes         
+alu_result[15:0]   Yes    Yes         Yes         
+next_left[3:0]     Yes    Yes         Yes         
+next_left[15:4]    No     No          No          
+next_right[3:0]    Yes    Yes         Yes         
+next_right[15:4]   No     No          No          
+load_left          Yes    Yes         Yes         
+load_right         Yes    Yes         Yes         
+data_out_tmp[15:0] Yes    Yes         Yes         
+
+
+-------------------------------------------------------------------------------
+FSM Coverage for Module : verichip7
+Summary for FSM :: state
+            Total Covered Percent                         
+States      5     5       100.00  (Not included in score) 
+Transitions 20    9       45.00                           
+Sequences   0     0                                       
+
+State, Transition and Sequence Details for FSM :: state
+-------------------------------------------------------------------------------
+states            Line No. Covered 
+VCHIP_STATE_ERR   135      Covered 
+VCHIP_STATE_EXP   133      Covered 
+VCHIP_STATE_LOST  155      Covered 
+VCHIP_STATE_NORM  125      Covered 
+VCHIP_STATE_RESET 95       Covered 
+
+transitions                         Line No. Covered     
+VCHIP_STATE_ERR->VCHIP_STATE_EXP    133      Not Covered 
+VCHIP_STATE_ERR->VCHIP_STATE_LOST   155      Not Covered 
+VCHIP_STATE_ERR->VCHIP_STATE_NORM   143      Covered     
+VCHIP_STATE_ERR->VCHIP_STATE_RESET  95       Covered     
+VCHIP_STATE_EXP->VCHIP_STATE_ERR    135      Not Covered 
+VCHIP_STATE_EXP->VCHIP_STATE_LOST   155      Not Covered 
+VCHIP_STATE_EXP->VCHIP_STATE_NORM   125      Not Covered 
+VCHIP_STATE_EXP->VCHIP_STATE_RESET  95       Covered     
+VCHIP_STATE_LOST->VCHIP_STATE_ERR   135      Not Covered 
+VCHIP_STATE_LOST->VCHIP_STATE_EXP   133      Not Covered 
+VCHIP_STATE_LOST->VCHIP_STATE_NORM  125      Not Covered 
+VCHIP_STATE_LOST->VCHIP_STATE_RESET 95       Covered     
+VCHIP_STATE_NORM->VCHIP_STATE_ERR   135      Covered     
+VCHIP_STATE_NORM->VCHIP_STATE_EXP   133      Covered     
+VCHIP_STATE_NORM->VCHIP_STATE_LOST  155      Not Covered 
+VCHIP_STATE_NORM->VCHIP_STATE_RESET 95       Covered     
+VCHIP_STATE_RESET->VCHIP_STATE_ERR  135      Not Covered 
+VCHIP_STATE_RESET->VCHIP_STATE_EXP  133      Not Covered 
+VCHIP_STATE_RESET->VCHIP_STATE_LOST 155      Covered     
+VCHIP_STATE_RESET->VCHIP_STATE_NORM 125      Covered     
+
+
+-------------------------------------------------------------------------------
+===============================================================================
+Module Instance : top_verichip7.verichip7
+===============================================================================
+
+Instance :
+
+SCORE  LINE   COND   TOGGLE FSM    
+ 77.18 100.00  93.46  70.28  45.00 
+
+
+Instance's subtree :
+
+SCORE  LINE   COND   TOGGLE FSM    
+ 77.18 100.00  93.46  70.28  45.00 
+
+
+Module : 
+
+SCORE  LINE   COND   TOGGLE FSM    NAME      
+ 77.18 100.00  93.46  70.28  45.00 verichip7 
+
+
+Parent : 
+
+SCORE  LINE   COND   TOGGLE FSM    NAME          
+--     --     --     --     --     top_verichip7 
+
+
+Subtrees :
+
+
+no children
+----------------
+
+
+-------------------------------------------------------------------------------
+Since this is the module's only instance, the coverage report is the same as for the module.
+===============================================================================
+Module : top_verichip7
+===============================================================================
+SCORE  LINE   COND   TOGGLE FSM    
+--     --     --     --     --     
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/top_verichip7.sv
+
+Module self-instances :
+
+SCORE  LINE   COND   TOGGLE FSM    NAME          
+--     --     --     --     --     top_verichip7 
+
+
+
+-------------------------------------------------------------------------------
+===============================================================================
+Module Instance : top_verichip7
+===============================================================================
+
+Instance :
+
+SCORE  LINE   COND   TOGGLE FSM    
+--     --     --     --     --     
+
+
+Instance's subtree :
+
+SCORE  LINE   COND   TOGGLE FSM    
+ 77.18 100.00  93.46  70.28  45.00 
+
+
+Module : 
+
+SCORE  LINE   COND   TOGGLE FSM    NAME          
+--     --     --     --     --     top_verichip7 
+
+
+Parent : 
+
+none
+----------------
+
+
+Subtrees :
+
+SCORE  LINE   COND   TOGGLE FSM    NAME      
+ 77.18 100.00  93.46  70.28  45.00 verichip7 
+
+
+
+-------------------------------------------------------------------------------
+Since this is the module's only instance, the coverage report is the same as for the module.

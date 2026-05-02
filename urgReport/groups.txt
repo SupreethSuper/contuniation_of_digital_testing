@@ -1,0 +1,15 @@
+Testbench Group List
+
+Total Groups Coverage Summary 
+SCORE  WEIGHT 
+100.00 1      
+
+
+Total groups in report: 4
+-------------------------------------------------------------------------------
+SCORE  WEIGHT GOAL   AT LEAST PER INSTANCE AUTO BIN MAX PRINT MISSING COMMENT NAME                                                 
+100.00 1      100    1        0            64           64                    top_verichip7.verichip7.verichip7_cov::alu_regs      
+100.00 1      100    1        0            64           64                    top_verichip7.verichip7.verichip7_cov::inters        
+100.00 1      100    1        0            64           64                    top_verichip7.verichip7.verichip7_cov::colors        
+100.00 1      100    1        0            64           64                    top_verichip7.verichip7.verichip7_cov::bus_interface 
+

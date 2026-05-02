@@ -1,0 +1,11 @@
+Design Hierarchy
+
+
+----------------
+SCORE  LINE   COND   TOGGLE FSM                  
+ 77.18 100.00  93.46  70.28  45.00 top_verichip7 
+  
+  ----------------
+  SCORE  LINE   COND   TOGGLE FSM              
+   77.18 100.00  93.46  70.28  45.00 verichip7 
+

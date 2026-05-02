@@ -1,0 +1,13 @@
+Design Module List
+
+Total Module Definition Coverage Summary 
+SCORE  LINE   COND   TOGGLE FSM    
+ 77.18 100.00  93.46  70.28  45.00 
+
+
+Total modules in report: 2
+-------------------------------------------------------------------------------
+SCORE  LINE   COND   TOGGLE FSM    NAME          
+ 77.18 100.00  93.46  70.28  45.00 verichip7     
+--     --     --     --     --     top_verichip7 
+

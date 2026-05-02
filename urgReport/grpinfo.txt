@@ -1,0 +1,742 @@
+Group : top_verichip7.verichip7.verichip7_cov::alu_regs
+
+===============================================================================
+Group : top_verichip7.verichip7.verichip7_cov::alu_regs
+===============================================================================
+SCORE  WEIGHT GOAL   AT LEAST AUTO BIN MAX PRINT MISSING 
+100.00 1      100    1        64           64            
+
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/verichip7_cov.sv
+
+
+
+-------------------------------------------------------------------------------
+
+Summary for Group   top_verichip7.verichip7.verichip7_cov::alu_regs
+
+
+
+CATEGORY  EXPECTED UNCOVERED COVERED PERCENT 
+Variables 25       0         25      100.00  
+Crosses   48       0         48      100.00  
+
+
+Variables for Group  top_verichip7.verichip7.verichip7_cov::alu_regs
+
+
+VARIABLE       EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST AUTO BIN MAX COMMENT 
+cp_alu_left    4        0         4       100.00  100  1      1        0                    
+cp_alu_right   4        0         4       100.00  100  1      1        0                    
+cp_cmd         8        0         8       100.00  100  1      1        0                    
+cp_norm_valid  2        0         2       100.00  100  1      1        0                    
+cp_reset_valid 2        0         2       100.00  100  1      1        0                    
+cp_state       5        0         5       100.00  100  1      1        0                    
+
+
+Crosses for Group  top_verichip7.verichip7.verichip7_cov::alu_regs
+
+
+CROSS              EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST PRINT MISSING COMMENT 
+cx_norm_cmd_valid  16       0         16      100.00  100  1      1        0                     
+cx_reset_cmd_valid 16       0         16      100.00  100  1      1        0                     
+cx_alu_lr          16       0         16      100.00  100  1      1        0                     
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_alu_left
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 4        0         4       100.00  
+
+
+User Defined Bins for cp_alu_left
+
+
+Bins
+
+NAME             COUNT AT LEAST 
+range[0000:3fff] 5274  1        
+range[4000:7fff] 1255  1        
+range[8000:bfff] 2367  1        
+range[c000:ffff] 1935  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_alu_right
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 4        0         4       100.00  
+
+
+User Defined Bins for cp_alu_right
+
+
+Bins
+
+NAME             COUNT AT LEAST 
+range[0000:3fff] 5558  1        
+range[4000:7fff] 1785  1        
+range[8000:bfff] 1189  1        
+range[c000:ffff] 2299  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_cmd
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 8        0         8       100.00  
+
+
+User Defined Bins for cp_cmd
+
+
+Excluded/Illegal bins
+
+NAME      COUNT STATUS   
+undefined 343   Excluded 
+
+
+Covered bins
+
+NAME COUNT AT LEAST 
+SHR  46    1        
+SHL  31    1        
+SWA  64    1        
+MVR  31    1        
+MVL  46    1        
+SUB  85    1        
+ADD  609   1        
+NON  9577  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_norm_valid
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 2        0         2       100.00  
+
+
+User Defined Bins for cp_norm_valid
+
+
+Bins
+
+NAME      COUNT AT LEAST 
+valid     118   1        
+not_valid 9649  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_reset_valid
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 2        0         2       100.00  
+
+
+User Defined Bins for cp_reset_valid
+
+
+Bins
+
+NAME      COUNT AT LEAST 
+valid     28    1        
+not_valid 650   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_state
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 5        0         5       100.00  
+
+
+User Defined Bins for cp_state
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+lost    144   1        
+exp_vio 111   1        
+error   131   1        
+normal  9767  1        
+reset   678   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_norm_cmd_valid
+
+
+Samples crossed: cp_cmd cp_norm_valid
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 16       0         16      100.00          
+
+
+Automatically Generated Cross Bins for cx_norm_cmd_valid
+
+
+Bins
+
+cp_cmd cp_norm_valid COUNT AT LEAST 
+SHR    not_valid     29    1        
+SHR    valid         5     1        
+SHL    not_valid     15    1        
+SHL    valid         4     1        
+SWA    not_valid     41    1        
+SWA    valid         11    1        
+MVR    not_valid     15    1        
+MVR    valid         4     1        
+MVL    not_valid     29    1        
+MVL    valid         5     1        
+SUB    not_valid     34    1        
+SUB    valid         16    1        
+ADD    not_valid     549   1        
+ADD    valid         23    1        
+NON    not_valid     8879  1        
+NON    valid         4     1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_reset_cmd_valid
+
+
+Samples crossed: cp_cmd cp_reset_valid
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 16       0         16      100.00          
+
+
+Automatically Generated Cross Bins for cx_reset_cmd_valid
+
+
+Bins
+
+cp_cmd cp_reset_valid COUNT AT LEAST 
+SHR    not_valid      5     1        
+SHR    valid          1     1        
+SHL    not_valid      5     1        
+SHL    valid          1     1        
+SWA    not_valid      5     1        
+SWA    valid          1     1        
+MVR    not_valid      5     1        
+MVR    valid          1     1        
+MVL    not_valid      5     1        
+MVL    valid          1     1        
+SUB    not_valid      7     1        
+SUB    valid          2     1        
+ADD    not_valid      7     1        
+ADD    valid          2     1        
+NON    not_valid      528   1        
+NON    valid          1     1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_alu_lr
+
+
+Samples crossed: cp_alu_left cp_alu_right
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 16       0         16      100.00          
+
+
+Automatically Generated Cross Bins for cx_alu_lr
+
+
+Bins
+
+cp_alu_left      cp_alu_right     COUNT AT LEAST 
+range[0000:3fff] range[4000:7fff] 528   1        
+range[0000:3fff] range[c000:ffff] 528   1        
+range[0000:3fff] range[8000:bfff] 396   1        
+range[0000:3fff] range[0000:3fff] 3822  1        
+range[4000:7fff] range[c000:ffff] 464   1        
+range[4000:7fff] range[4000:7fff] 333   1        
+range[4000:7fff] range[8000:bfff] 131   1        
+range[4000:7fff] range[0000:3fff] 327   1        
+range[8000:bfff] range[c000:ffff] 973   1        
+range[8000:bfff] range[4000:7fff] 595   1        
+range[8000:bfff] range[8000:bfff] 333   1        
+range[8000:bfff] range[0000:3fff] 466   1        
+range[c000:ffff] range[c000:ffff] 334   1        
+range[c000:ffff] range[4000:7fff] 329   1        
+range[c000:ffff] range[8000:bfff] 329   1        
+range[c000:ffff] range[0000:3fff] 943   1        
+
+
+Group : top_verichip7.verichip7.verichip7_cov::inters
+
+===============================================================================
+Group : top_verichip7.verichip7.verichip7_cov::inters
+===============================================================================
+SCORE  WEIGHT GOAL   AT LEAST AUTO BIN MAX PRINT MISSING 
+100.00 1      100    1        64           64            
+
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/verichip7_cov.sv
+
+
+
+-------------------------------------------------------------------------------
+
+Summary for Group   top_verichip7.verichip7.verichip7_cov::inters
+
+
+
+CATEGORY  EXPECTED UNCOVERED COVERED PERCENT 
+Variables 4        0         4       100.00  
+Crosses   4        0         4       100.00  
+
+
+Variables for Group  top_verichip7.verichip7.verichip7_cov::inters
+
+
+VARIABLE EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST AUTO BIN MAX COMMENT 
+cp_int1  2        0         2       100.00  100  1      1        2                    
+cp_int2  2        0         2       100.00  100  1      1        2                    
+
+
+Crosses for Group  top_verichip7.verichip7.verichip7_cov::inters
+
+
+CROSS   EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST PRINT MISSING COMMENT 
+cx_ints 4        0         4       100.00  100  1      1        0                     
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_int1
+
+
+CATEGORY                     EXPECTED UNCOVERED COVERED PERCENT 
+Automatically Generated Bins 2        0         2       100.00  
+
+
+Automatically Generated Bins for cp_int1
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+auto[0] 10787 1        
+auto[1] 44    1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_int2
+
+
+CATEGORY                     EXPECTED UNCOVERED COVERED PERCENT 
+Automatically Generated Bins 2        0         2       100.00  
+
+
+Automatically Generated Bins for cp_int2
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+auto[0] 10804 1        
+auto[1] 27    1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_ints
+
+
+Samples crossed: cp_int1 cp_int2
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 4        0         4       100.00          
+
+
+Automatically Generated Cross Bins for cx_ints
+
+
+Bins
+
+cp_int1 cp_int2 COUNT AT LEAST 
+auto[0] auto[0] 10773 1        
+auto[0] auto[1] 14    1        
+auto[1] auto[0] 31    1        
+auto[1] auto[1] 13    1        
+
+
+Group : top_verichip7.verichip7.verichip7_cov::colors
+
+===============================================================================
+Group : top_verichip7.verichip7.verichip7_cov::colors
+===============================================================================
+SCORE  WEIGHT GOAL   AT LEAST AUTO BIN MAX PRINT MISSING 
+100.00 1      100    1        64           64            
+
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/verichip7_cov.sv
+
+
+
+-------------------------------------------------------------------------------
+
+Summary for Group   top_verichip7.verichip7.verichip7_cov::colors
+
+
+
+CATEGORY  EXPECTED UNCOVERED COVERED PERCENT 
+Variables 4        0         4       100.00  
+Crosses   4        0         4       100.00  
+
+
+Variables for Group  top_verichip7.verichip7.verichip7_cov::colors
+
+
+VARIABLE  EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST AUTO BIN MAX COMMENT 
+cp_gold   2        0         2       100.00  100  1      1        2                    
+cp_maroon 2        0         2       100.00  100  1      1        2                    
+
+
+Crosses for Group  top_verichip7.verichip7.verichip7_cov::colors
+
+
+CROSS     EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST PRINT MISSING COMMENT 
+cx_colors 4        0         4       100.00  100  1      1        0                     
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_gold
+
+
+CATEGORY                     EXPECTED UNCOVERED COVERED PERCENT 
+Automatically Generated Bins 2        0         2       100.00  
+
+
+Automatically Generated Bins for cp_gold
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+auto[0] 10599 1        
+auto[1] 233   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_maroon
+
+
+CATEGORY                     EXPECTED UNCOVERED COVERED PERCENT 
+Automatically Generated Bins 2        0         2       100.00  
+
+
+Automatically Generated Bins for cp_maroon
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+auto[0] 10816 1        
+auto[1] 16    1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_colors
+
+
+Samples crossed: cp_gold cp_maroon
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 4        0         4       100.00          
+
+
+Automatically Generated Cross Bins for cx_colors
+
+
+Bins
+
+cp_gold cp_maroon COUNT AT LEAST 
+auto[0] auto[0]   10591 1        
+auto[0] auto[1]   8     1        
+auto[1] auto[0]   225   1        
+auto[1] auto[1]   8     1        
+
+
+Group : top_verichip7.verichip7.verichip7_cov::bus_interface
+
+===============================================================================
+Group : top_verichip7.verichip7.verichip7_cov::bus_interface
+===============================================================================
+SCORE  WEIGHT GOAL   AT LEAST AUTO BIN MAX PRINT MISSING 
+100.00 1      100    1        64           64            
+
+
+Source File(s) : 
+
+/afs/asu.edu/users/s/a/t/sathrey5/eee598sdm/homework07/verichip7_cov.sv
+
+
+
+-------------------------------------------------------------------------------
+
+Summary for Group   top_verichip7.verichip7.verichip7_cov::bus_interface
+
+
+
+CATEGORY  EXPECTED UNCOVERED COVERED PERCENT 
+Variables 30       0         30      100.00  
+Crosses   44       0         44      100.00  
+
+
+Variables for Group  top_verichip7.verichip7.verichip7_cov::bus_interface
+
+
+VARIABLE       EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST AUTO BIN MAX COMMENT 
+cp_cs          2        0         2       100.00  100  1      1        0                    
+cp_rw          2        0         2       100.00  100  1      1        0                    
+cp_bytes       4        0         4       100.00  100  1      1        0                    
+cp_data_in     8        0         8       100.00  100  1      1        0                    
+cp_address     7        0         7       100.00  100  1      1        0                    
+cp_address_all 7        0         7       100.00  100  1      1        0                    
+
+
+Crosses for Group  top_verichip7.verichip7.verichip7_cov::bus_interface
+
+
+CROSS        EXPECTED UNCOVERED COVERED PERCENT GOAL WEIGHT AT LEAST PRINT MISSING COMMENT 
+cx_cs_rw_be  16       0         16      100.00  100  1      1        0                     
+cx_cs_rw_add 28       0         28      100.00  100  1      1        0                     
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_cs
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 2        0         2       100.00  
+
+
+User Defined Bins for cp_cs
+
+
+Bins
+
+NAME         COUNT AT LEAST 
+selected     9607  1        
+not_selected 1225  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_rw
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 2        0         2       100.00  
+
+
+User Defined Bins for cp_rw
+
+
+Bins
+
+NAME  COUNT AT LEAST 
+read  5445  1        
+write 5387  1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_bytes
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 4        0         4       100.00  
+
+
+User Defined Bins for cp_bytes
+
+
+Bins
+
+NAME    COUNT AT LEAST 
+both    8524  1        
+byte1   698   1        
+byte0   699   1        
+neither 911   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_data_in
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 8        0         8       100.00  
+
+
+User Defined Bins for cp_data_in
+
+
+Bins
+
+NAME             COUNT AT LEAST 
+range[0000:1fff] 1756  1        
+range[2000:3fff] 49    1        
+range[4000:5fff] 455   1        
+range[6000:7fff] 486   1        
+range[8000:9fff] 631   1        
+range[a000:bfff] 480   1        
+range[c000:dfff] 608   1        
+range[e000:ffff] 630   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_address
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 7        0         7       100.00  
+
+
+User Defined Bins for cp_address
+
+
+Bins
+
+NAME COUNT AT LEAST 
+alu  142   1        
+rgt  4819  1        
+lft  4090  1        
+con  108   1        
+cmd  199   1        
+sta  240   1        
+ver  6     1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Variable cp_address_all
+
+
+CATEGORY          EXPECTED UNCOVERED COVERED PERCENT 
+User Defined Bins 7        0         7       100.00  
+
+
+User Defined Bins for cp_address_all
+
+
+Bins
+
+NAME COUNT AT LEAST 
+alu  156   1        
+rgt  4933  1        
+lft  4139  1        
+con  124   1        
+cmd  212   1        
+sta  254   1        
+ver  769   1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_cs_rw_be
+
+
+Samples crossed: cp_cs cp_rw cp_bytes
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 16       0         16      100.00          
+
+
+Automatically Generated Cross Bins for cx_cs_rw_be
+
+
+Bins
+
+cp_cs        cp_rw cp_bytes COUNT AT LEAST 
+selected     read  byte1    10    1        
+selected     read  both     4482  1        
+selected     read  neither  10    1        
+selected     read  byte0    10    1        
+selected     write byte1    664   1        
+selected     write both     3629  1        
+selected     write neither  134   1        
+selected     write byte0    668   1        
+not_selected read  byte1    14    1        
+not_selected read  both     145   1        
+not_selected read  byte0    14    1        
+not_selected read  neither  760   1        
+not_selected write byte1    10    1        
+not_selected write both     268   1        
+not_selected write neither  7     1        
+not_selected write byte0    7     1        
+
+
+-------------------------------------------------------------------------------
+
+Summary for Cross cx_cs_rw_add
+
+
+Samples crossed: cp_cs cp_rw cp_address_all
+CATEGORY                           EXPECTED UNCOVERED COVERED PERCENT MISSING 
+Automatically Generated Cross Bins 28       0         28      100.00          
+
+
+Automatically Generated Cross Bins for cx_cs_rw_add
+
+
+Bins
+
+cp_cs        cp_rw cp_address_all COUNT AT LEAST 
+selected     read  ver            5     1        
+selected     read  con            49    1        
+selected     read  sta            228   1        
+selected     read  lft            1877  1        
+selected     read  cmd            3     1        
+selected     read  alu            141   1        
+selected     read  rgt            2206  1        
+selected     write sta            12    1        
+selected     write ver            1     1        
+selected     write con            59    1        
+selected     write lft            2213  1        
+selected     write alu            1     1        
+selected     write cmd            196   1        
+selected     write rgt            2613  1        
+not_selected read  lft            10    1        
+not_selected read  con            9     1        
+not_selected read  sta            9     1        
+not_selected read  ver            758   1        
+not_selected read  alu            9     1        
+not_selected read  rgt            9     1        
+not_selected read  cmd            8     1        
+not_selected write ver            5     1        
+not_selected write sta            5     1        
+not_selected write con            7     1        
+not_selected write lft            39    1        
+not_selected write alu            5     1        
+not_selected write cmd            5     1        
+not_selected write rgt            105   1        
+
+
