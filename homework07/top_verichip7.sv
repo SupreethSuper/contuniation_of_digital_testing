@@ -3975,6 +3975,128 @@ begin
    $display("18b3 exp_dis=1 valid=0(be=01) cmd=7: bad_exp_cmd=0, no exec, NORM: PASS at %t", $time());
 
    // ===================================================================
+   // SECTION 19: CROSSOVER - maroon x (!gold)
+   // Condition: maroon && !gold (ERR -> NORM recovery, line 142)
+   //
+   // Combo A: maroon=1, gold=0 -> maroon && !gold = 1 (condition TRUE)
+   //          In ERR state: recovers to NORM
+   //          In RESET state: stays RESET (only !maroon&&gold exits RESET)
+   //
+   // Combo B: maroon=1, gold=1 -> maroon && !gold = 0 (condition FALSE)
+   //          In ERR state: stays ERR
+   // ===================================================================
+   $display("\n=== CROSSOVER: maroon x (!gold) TESTS ===");
+
+   // -----------------------------------------------------------------
+   // COMBO A: maroon=1, gold=0 -> condition TRUE
+   // -----------------------------------------------------------------
+
+   // A1: ERR state + maroon=1, gold=0 -> recovers to NORM
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `CHANGE_STATE_TO_ERR                 // now in ERR
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+
+   // Apply maroon=1, gold=0
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   // Should have recovered to NORM
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   maroon <= 1'b0;
+   $display("19a1 ERR + maroon=1 gold=0: recovers to NORM: PASS at %t", $time());
+
+   // A2: RESET state + maroon=1, gold=0 -> stays RESET
+   //     maroon&&!gold only works in ERR, not RESET
+   `CLEAR_ALL
+   `CHIP_RESET
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   maroon <= 1'b0;
+   $display("19a2 RESET + maroon=1 gold=0: stays RESET: PASS at %t", $time());
+
+   // A3: NORM state + maroon=1, gold=0 -> stays NORM
+   //     Condition only affects ERR state
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b0;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   maroon <= 1'b0;
+   $display("19a3 NORM + maroon=1 gold=0: stays NORM: PASS at %t", $time());
+
+   // -----------------------------------------------------------------
+   // COMBO B: maroon=1, gold=1 -> condition FALSE
+   // -----------------------------------------------------------------
+
+   // B1: ERR state + maroon=1, gold=1 -> stays ERR (no recovery)
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+   `CHANGE_STATE_TO_ERR
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   `READ_REG(VCHIP_STA_ADDR, STA_ERROR, 1'b1)
+   maroon <= 1'b0;
+   gold   <= 1'b0;
+   $display("19b1 ERR + maroon=1 gold=1: stays ERR: PASS at %t", $time());
+
+   // B2: RESET state + maroon=1, gold=1 -> stays RESET
+   `CLEAR_ALL
+   `CHIP_RESET
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   `READ_REG(VCHIP_STA_ADDR, STA_RESET, 1'b1)
+   maroon <= 1'b0;
+   gold   <= 1'b0;
+   $display("19b2 RESET + maroon=1 gold=1: stays RESET: PASS at %t", $time());
+
+   // B3: NORM state + maroon=1, gold=1 -> stays NORM
+   `CLEAR_ALL
+   `CHIP_RESET
+   `CHANGE_STATE_TO_NORMAL
+
+   wait(clk == 1'b0);
+   maroon <= 1'b1;
+   gold   <= 1'b1;
+   wait(clk == 1'b1);
+   wait(clk == 1'b0);
+
+   `READ_REG(VCHIP_STA_ADDR, STA_NORMAL, 1'b1)
+   maroon <= 1'b0;
+   gold   <= 1'b0;
+   $display("19b3 NORM + maroon=1 gold=1: stays NORM: PASS at %t", $time());
+
+   // ===================================================================
    // END OF TESTS
    // ===================================================================
    $display("\n=== ALL TESTS COMPLETE ===");

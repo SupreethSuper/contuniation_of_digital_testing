@@ -130,7 +130,13 @@ covergroup alu_regs @ ( negedge clk );
    cx_norm_cmd_valid:  cross cp_cmd, cp_norm_valid;
    cx_reset_cmd_valid: cross cp_cmd, cp_reset_valid;
    cx_alu_lr:          cross cp_alu_left, cp_alu_right;
-   cx_bad_exp_cmd:     cross cp_export_dis, cp_valid, cp_bad_exp_cmd;
+   cx_bad_exp_cmd:     cross cp_export_dis, cp_valid, cp_bad_exp_cmd
+   {
+      // bad_exp_cmd can never be 1 when export_dis=0 (0 && anything = 0)
+      ignore_bins exp_dis_0_bad_1 = binsof(cp_export_dis.enabled) && binsof(cp_bad_exp_cmd.is_bad);
+      // bad_exp_cmd can never be 1 when valid=0 (anything && 0 = 0)
+      ignore_bins valid_0_bad_1   = binsof(cp_valid.not_valid) && binsof(cp_bad_exp_cmd.is_bad);
+   }
 
 endgroup // alu_regs
 alu_regs alu_regs_i = new();
